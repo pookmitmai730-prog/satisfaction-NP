@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { db } from './firebaseConfig';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
-import pwaLogo from './assets/pwa.webp'; // 👈 นำเข้ารูปโลโก้ประปาจาก src/assets
+import pwaLogo from './assets/pwa.WEBP';
 
 export default function StaffEvaluationApp() {
   const [step, setStep] = useState('login'); // 'login' | 'evaluating' | 'success' | 'admin-login' | 'admin-dashboard'
@@ -22,6 +22,10 @@ export default function StaffEvaluationApp() {
   const [adminPin, setAdminPin] = useState('');
   const [evaluationsList, setEvaluationsList] = useState([]);
   const [openGraphId, setOpenGraphId] = useState(null);
+
+  // Pagination State (แบ่งหน้าตารางครั้งละ 10 แถว)
+  const [currentPage, setCurrentPage] = useState(1);
+  const rowsPerPage = 10;
 
   // Form States: เพิ่ม/แก้ไขพนักงาน
   const [editingEmpDocId, setEditingEmpDocId] = useState(null);
@@ -69,6 +73,8 @@ export default function StaffEvaluationApp() {
     try {
       const querySnapshot = await getDocs(collection(db, "evaluations"));
       const list = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      // เรียงจากใหม่ไปเก่า
+      list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       setEvaluationsList(list);
     } catch (err) {
       console.error("Error fetching evaluations:", err);
@@ -279,6 +285,7 @@ export default function StaffEvaluationApp() {
 
   const filteredData = getFilteredEvaluations();
 
+  // คำนวณสถิติรายงานทั้งหมด
   const calculateReportStats = () => {
     const totalEvals = filteredData.length;
     
@@ -348,6 +355,23 @@ export default function StaffEvaluationApp() {
   };
 
   const reportStats = calculateReportStats();
+
+  // คำนวณข้อมูลสำหรับ Pagination ของตารางประวัติ
+  const totalPages = Math.ceil(filteredData.length / rowsPerPage) || 1;
+  const indexOfLastRow = currentPage * rowsPerPage;
+  const indexOfFirstRow = indexOfLastRow - rowsPerPage;
+  const currentTableData = filteredData.slice(indexOfFirstRow, indexOfLastRow);
+
+  // เปลี่ยน Filter ช่วงเวลาแล้วให้รีเซ็ตหน้าตารางกลับไปหน้า 1
+  const handlePeriodChange = (e) => {
+    setReportPeriod(e.target.value);
+    setCurrentPage(1);
+  };
+
+  const handleStaffFilterChange = (e) => {
+    setSelectedStaffFilter(e.target.value);
+    setCurrentPage(1);
+  };
 
   const exportToExcel = () => {
     let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
@@ -454,13 +478,13 @@ export default function StaffEvaluationApp() {
         </head>
         <body>
           <h1>💧 รายงานสรุปผลการประเมินความพึงพอใจ (การประปาส่วนภูมิภาคสาขานครพนม)</h1>
-          <p>ช่วงเวลา: <b>${reportPeriod.toUpperCase()}</b> | พนักงาน: <b>${staffName}</b> | ผู้ประเมินทั้งหมด: <b>${reportStats.totalEvals} ครั้ง</b></p>
+          <p>ช่วงเวลา: <b>${reportPeriod.toUpperCase()}</b> | พนักงาน: <b>${staffName}</b> | จำนวนผู้ประเมินรวม: <b>${reportStats.totalEvals} ราย</b></p>
           
           <h2>📌 สรุปวิเคราะห์หัวข้อการประเมิน (สูงสุด & ต่ำสุด)</h2>
-          <div className="card">
+          <div class="card">
             💚 <b>หัวข้อที่ลูกค้าพึงพอใจมากที่สุด:</b> ${reportStats.topCriteria ? `${reportStats.topCriteria.title} (คะแนนเฉลี่ย ${reportStats.topCriteria.avg.toFixed(2)}/4.00)` : 'ไม่มีข้อมูล'}
           </div>
-          <div className="card" style="background: #fff1f2; border-color: #fecdd3;">
+          <div class="card" style="background: #fff1f2; border-color: #fecdd3;">
             💔 <b>หัวข้อที่ลูกค้าพึงพอใจน้อยที่สุด:</b> ${reportStats.lowestCriteria ? `${reportStats.lowestCriteria.title} (คะแนนเฉลี่ย ${reportStats.lowestCriteria.avg.toFixed(2)}/4.00)` : 'ไม่มีข้อมูล'}
           </div>
 
@@ -507,7 +531,6 @@ export default function StaffEvaluationApp() {
       {step === 'login' && (
         <div className="bg-white p-6 sm:p-10 rounded-3xl shadow-xl border border-sky-100 max-w-md w-full text-center relative">
           
-          {/* 💧 เปลี่ยนเป็นโลโก้ประปาจาก pwa.WEBP */}
           <div className="mb-4">
             <img 
               src={pwaLogo} 
@@ -630,7 +653,7 @@ export default function StaffEvaluationApp() {
                   <label className="block text-xs font-semibold text-sky-900 mb-1">ช่วงเวลาสั่งสรุปรายงาน</label>
                   <select 
                     value={reportPeriod} 
-                    onChange={(e) => setReportPeriod(e.target.value)}
+                    onChange={handlePeriodChange}
                     className="w-full p-2.5 rounded-xl border border-sky-200 text-xs sm:text-sm bg-white text-sky-900 focus:outline-none focus:ring-2 focus:ring-sky-500"
                   >
                     <option value="daily">📅 ประจำวัน (วันนี้)</option>
@@ -644,7 +667,7 @@ export default function StaffEvaluationApp() {
                   <label className="block text-xs font-semibold text-sky-900 mb-1">เลือกพนักงาน</label>
                   <select 
                     value={selectedStaffFilter} 
-                    onChange={(e) => setSelectedStaffFilter(e.target.value)}
+                    onChange={handleStaffFilterChange}
                     className="w-full p-2.5 rounded-xl border border-sky-200 text-xs sm:text-sm bg-white text-sky-900 focus:outline-none focus:ring-2 focus:ring-sky-500"
                   >
                     <option value="all">👥 ภาพรวมพนักงานทุกคนรวมกัน</option>
@@ -668,6 +691,15 @@ export default function StaffEvaluationApp() {
                     🖨️ เปิดรายงาน PDF
                   </button>
                 </div>
+              </div>
+
+              {/* 📌 สรุปจำนวนผู้ประเมินตามช่วงเวลา */}
+              <div className="bg-sky-600 text-white p-4 rounded-2xl shadow-md flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-sky-100 font-medium">สถิติจำนวนผู้ทำรายการประเมิน ({reportPeriod === 'daily' ? 'ประจำวัน' : reportPeriod === 'monthly' ? 'ประจำเดือน' : reportPeriod === 'yearly' ? 'ประจำปี' : 'ทั้งหมด'})</p>
+                  <h3 className="text-2xl sm:text-3xl font-extrabold mt-0.5">{reportStats.totalEvals} <span className="text-sm font-normal">ราย</span></h3>
+                </div>
+               
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -833,36 +865,78 @@ export default function StaffEvaluationApp() {
                 )}
               </div>
 
-              <div className="overflow-x-auto">
-                <h3 className="text-xs sm:text-sm font-bold text-sky-900 mb-2">📋 ประวัติการประเมินย้อนหลัง</h3>
-                <table className="w-full text-left text-xs sm:text-sm border-collapse">
-                  <thead>
-                    <tr className="bg-sky-100/70 text-sky-900 border-b border-sky-200">
-                      <th className="p-3 rounded-tl-xl">วันที่-เวลา</th>
-                      <th className="p-3">รหัส</th>
-                      <th className="p-3">ชื่อพนักงาน</th>
-                      <th className="p-3">ข้อเสนอแนะ</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-sky-100">
-                    {filteredData.length === 0 ? (
-                      <tr>
-                        <td colSpan="4" className="text-center p-8 text-sky-400">ไม่พบข้อมูลการประเมินตามเงื่อนไขที่เลือก</td>
+              {/* 📋 ประวัติการประเมินย้อนหลัง (แสดงครั้งละ 10 แถว + ปุ่มเปลี่ยนหน้า) */}
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-xs sm:text-sm font-bold text-sky-900">📋 ประวัติการประเมินย้อนหลัง (แสดงหน้าละ 10 รายการ)</h3>
+                  <span className="text-xs text-sky-600">รวมทั้งหมด {filteredData.length} รายการ</span>
+                </div>
+
+                <div className="overflow-x-auto border border-sky-200 rounded-2xl bg-white shadow-xs">
+                  <table className="w-full text-left text-xs sm:text-sm border-collapse">
+                    <thead>
+                      <tr className="bg-sky-100/70 text-sky-900 border-b border-sky-200">
+                        <th className="p-3">วันที่-เวลา</th>
+                        <th className="p-3">รหัสพนักงาน</th>
+                        <th className="p-3">ชื่อพนักงาน</th>
+                        <th className="p-3">ข้อเสนอแนะ</th>
                       </tr>
-                    ) : (
-                      filteredData.map((item, idx) => (
-                        <tr key={item.id || idx} className="hover:bg-sky-50/50">
-                          <td className="p-3 text-sky-900">
-                            {item.createdAt ? new Date(item.createdAt).toLocaleString('th-TH') : '-'}
-                          </td>
-                          <td className="p-3 font-semibold text-sky-800">{item.employeeId}</td>
-                          <td className="p-3 font-medium text-sky-900">{item.employeeName}</td>
-                          <td className="p-3 text-slate-600 italic">{item.comment || '-'}</td>
+                    </thead>
+                    <tbody className="divide-y divide-sky-100">
+                      {currentTableData.length === 0 ? (
+                        <tr>
+                          <td colSpan="4" className="text-center p-8 text-sky-400">ไม่พบข้อมูลการประเมินตามเงื่อนไขที่เลือก</td>
                         </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
+                      ) : (
+                        currentTableData.map((item, idx) => (
+                          <tr key={item.id || idx} className="hover:bg-sky-50/50">
+                            <td className="p-3 text-sky-900">
+                              {item.createdAt ? new Date(item.createdAt).toLocaleString('th-TH') : '-'}
+                            </td>
+                            <td className="p-3 font-semibold text-sky-800">{item.employeeId}</td>
+                            <td className="p-3 font-medium text-sky-900">{item.employeeName}</td>
+                            <td className="p-3 text-slate-600 italic">{item.comment || '-'}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* 🧭 ปุ่มควบคุม Pagination เปลี่ยนหน้า */}
+                {filteredData.length > 0 && (
+                  <div className="flex items-center justify-between pt-2 px-1">
+                    <span className="text-xs text-sky-700 font-medium">
+                      หน้าที่ {currentPage} จาก {totalPages} (แสดง {indexOfFirstRow + 1} - {Math.min(indexOfLastRow, filteredData.length)} จาก {filteredData.length} รายการ)
+                    </span>
+                    
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                        disabled={currentPage === 1}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition ${
+                          currentPage === 1 
+                            ? 'bg-slate-100 text-slate-400 cursor-not-allowed' 
+                            : 'bg-sky-600 text-white hover:bg-sky-700 shadow-xs'
+                        }`}
+                      >
+                        ◀️ ก่อนหน้า
+                      </button>
+                      
+                      <button
+                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                        disabled={currentPage === totalPages}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition ${
+                          currentPage === totalPages 
+                            ? 'bg-slate-100 text-slate-400 cursor-not-allowed' 
+                            : 'bg-sky-600 text-white hover:bg-sky-700 shadow-xs'
+                        }`}
+                      >
+                        ถัดไป ▶️
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
             </div>
