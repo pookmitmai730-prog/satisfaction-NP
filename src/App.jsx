@@ -879,7 +879,7 @@ export default function StaffEvaluationApp() {
         </div>
       )}
 
-      {/* ⭐ 4. หน้าจอประเมินความพึงพอใจสำหรับลูกค้า (ซ่อนรหัสพนักงาน แสดงเฉพาะตำแหน่ง) */}
+      {/* ⭐ 4. หน้าจอประเมินความพึงพอใจสำหรับลูกค้า */}
       {step === 'evaluating' && currentStaff && (
         <div className="bg-white w-screen h-screen flex flex-col justify-between p-3 sm:p-5 md:p-6 overflow-hidden relative">
           
@@ -899,17 +899,14 @@ export default function StaffEvaluationApp() {
             ออกจากระบบ
           </button>
 
-          {/* Header รูปพนักงาน + ชื่อและตำแหน่ง */}
+          {/* Header รูปพนักงาน + ชื่อและตำแหน่ง (นำหยดน้ำออกจากรูปโปรไฟล์แล้ว) */}
           <div className="flex flex-col items-center justify-center border-b border-sky-100 pb-2 mb-2 flex-shrink-0 text-center">
-            <div className="relative mb-2">
+            <div className="mb-2">
               <img 
                 src={currentStaff.photoUrl} 
                 alt={currentStaff.name} 
                 className="w-36 h-36 sm:w-44 sm:h-44 md:w-52 md:h-52 rounded-full object-cover shadow-xl border-4 border-sky-300 p-1 bg-white mx-auto"
               />
-              <div className="absolute bottom-1 right-2 bg-sky-500 text-white p-2 rounded-full shadow-md text-base">
-                💧
-              </div>
             </div>
             <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-sky-900 leading-tight">{currentStaff.name}</h2>
             <p className="text-xs sm:text-sm md:text-base text-sky-600 font-semibold">{currentStaff.position}</p>
@@ -918,6 +915,14 @@ export default function StaffEvaluationApp() {
           {/* Form หัวข้อประเมิน */}
           <form onSubmit={handleSubmitScore} className="flex flex-col justify-between flex-1 space-y-2 overflow-hidden">
             <div className="space-y-2 overflow-y-auto pr-1 flex-1 flex flex-col justify-around">
+              
+              {/* ข้อความเพิ่มเติมพร้อมไอคอนหยดน้ำ 💧 หน้า-หลัง */}
+              <div className="text-center py-1">
+                <h3 className="text-base sm:text-lg md:text-xl font-bold text-sky-800 bg-sky-100/70 py-2 px-4 rounded-2xl shadow-2xs inline-block">
+                  💧 โปรดประเมินความพึงพอใจในการรับบริการครั้งนี้ 💧
+                </h3>
+              </div>
+
               {visibleCriteriaList.length === 0 ? (
                 <p className="text-center text-slate-400 py-6 text-sm">ไม่มีหัวข้อการประเมินในขณะนี้</p>
               ) : (
