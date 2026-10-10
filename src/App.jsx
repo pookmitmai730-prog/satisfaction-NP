@@ -20,6 +20,7 @@ export default function StaffEvaluationApp() {
   // Admin States
   const [adminPin, setAdminPin] = useState('');
   const [evaluationsList, setEvaluationsList] = useState([]);
+  const [openGraphId, setOpenGraphId] = useState(null); // State สำหรับควบคุมการเปิด/ปิด กราฟแท่ง
 
   // Form States: เพิ่ม/แก้ไขพนักงาน
   const [editingEmpDocId, setEditingEmpDocId] = useState(null);
@@ -284,6 +285,7 @@ export default function StaffEvaluationApp() {
     const criteriaStats = {};
     criteriaList.forEach(crit => {
       criteriaStats[crit.id] = {
+        id: crit.id,
         title: crit.title,
         scoresCount: { 1: 0, 2: 0, 3: 0, 4: 0 },
         totalScoreSum: 0,
@@ -603,18 +605,37 @@ export default function StaffEvaluationApp() {
                   <div className="space-y-4">
                     {Object.values(reportStats.criteriaStats).map((stat, idx) => {
                       const rated = stat.ratedCount || 1;
-                      const p1 = ((stat.scoresCount[1] / rated) * 100).toFixed(1);
-                      const p2 = ((stat.scoresCount[2] / rated) * 100).toFixed(1);
-                      const p3 = ((stat.scoresCount[3] / rated) * 100).toFixed(1);
-                      const p4 = ((stat.scoresCount[4] / rated) * 100).toFixed(1);
+                      const p1 = Number(((stat.scoresCount[1] / rated) * 100).toFixed(1));
+                      const p2 = Number(((stat.scoresCount[2] / rated) * 100).toFixed(1));
+                      const p3 = Number(((stat.scoresCount[3] / rated) * 100).toFixed(1));
+                      const p4 = Number(((stat.scoresCount[4] / rated) * 100).toFixed(1));
                       const avg = (stat.totalScoreSum / rated).toFixed(2);
+                      const isGraphOpen = openGraphId === stat.id;
 
                       return (
-                        <div key={idx} className="bg-sky-50/50 p-3.5 rounded-xl border border-sky-100 space-y-2">
-                          <div className="flex justify-between items-center text-xs sm:text-sm">
+                        <div key={idx} className="bg-sky-50/50 p-3.5 rounded-xl border border-sky-100 space-y-3">
+                          <div className="flex justify-between items-center text-xs sm:text-sm flex-wrap gap-2">
                             <span className="font-bold text-sky-900">{idx + 1}. {stat.title}</span>
-                            <span className="bg-sky-200 text-sky-800 px-2 py-0.5 rounded-md font-bold">คะแนนเฉลี่ย: {avg} / 4.00</span>
+                            
+                            <div className="flex items-center space-x-2">
+                              <span className="bg-sky-200 text-sky-800 px-2.5 py-1 rounded-md font-bold">
+                                คะแนนเฉลี่ย: {avg} / 4.00
+                              </span>
+                              
+                              {/* ปุ่มกดแสดง/ซ่อน กราฟแท่ง */}
+                              <button 
+                                onClick={() => setOpenGraphId(isGraphOpen ? null : stat.id)}
+                                className={`flex items-center space-x-1 px-3 py-1 rounded-md text-xs font-bold transition shadow-xs ${
+                                  isGraphOpen ? 'bg-sky-700 text-white' : 'bg-white text-sky-700 border border-sky-300 hover:bg-sky-100'
+                                }`}
+                              >
+                                <span>📊</span>
+                                <span>{isGraphOpen ? 'ซ่อนกราฟ' : 'ดูแสดงกราฟ'}</span>
+                              </button>
+                            </div>
                           </div>
+
+                          {/* สรุปแบบกล่องข้อความ */}
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-[11px] sm:text-xs">
                             <div className="bg-white p-2 rounded-lg border border-red-100 text-red-700">
                               😡 ไม่พอใจเลย: <b>{stat.scoresCount[1]} คน</b> ({p1}%)
@@ -629,6 +650,60 @@ export default function StaffEvaluationApp() {
                               😍 พอใจมากที่สุด: <b>{stat.scoresCount[4]} คน</b> ({p4}%)
                             </div>
                           </div>
+
+                          {/* 📊 ส่วนแสดงกราฟแท่งเปอร์เซ็นต์ (เมื่อกดคลิกไอคอนกราฟ) */}
+                          {isGraphOpen && (
+                            <div className="bg-white p-4 rounded-xl border border-sky-200 mt-2 space-y-3 animate-fadeIn">
+                              <p className="text-xs font-bold text-sky-900 border-b border-sky-100 pb-1">📈 กราฟแท่งเปรียบเทียบสัดส่วนเปอร์เซ็นต์การประเมิน</p>
+                              
+                              <div className="space-y-2 text-xs">
+                                {/* แถบที่ 1: ไม่พอใจเลย */}
+                                <div>
+                                  <div className="flex justify-between mb-1 text-red-700 font-semibold">
+                                    <span>😡 ไม่พอใจเลย</span>
+                                    <span>{p1}% ({stat.scoresCount[1]} คน)</span>
+                                  </div>
+                                  <div className="w-full bg-slate-100 rounded-full h-3.5 overflow-hidden">
+                                    <div className="bg-red-500 h-3.5 rounded-full transition-all duration-500" style={{ width: `${p1}%` }}></div>
+                                  </div>
+                                </div>
+
+                                {/* แถบที่ 2: พอใจปานกลาง */}
+                                <div>
+                                  <div className="flex justify-between mb-1 text-amber-700 font-semibold">
+                                    <span>😐 พอใจปานกลาง</span>
+                                    <span>{p2}% ({stat.scoresCount[2]} คน)</span>
+                                  </div>
+                                  <div className="w-full bg-slate-100 rounded-full h-3.5 overflow-hidden">
+                                    <div className="bg-amber-500 h-3.5 rounded-full transition-all duration-500" style={{ width: `${p2}%` }}></div>
+                                  </div>
+                                </div>
+
+                                {/* แถบที่ 3: พอใจมาก */}
+                                <div>
+                                  <div className="flex justify-between mb-1 text-blue-700 font-semibold">
+                                    <span>😊 พอใจมาก</span>
+                                    <span>{p3}% ({stat.scoresCount[3]} คน)</span>
+                                  </div>
+                                  <div className="w-full bg-slate-100 rounded-full h-3.5 overflow-hidden">
+                                    <div className="bg-blue-500 h-3.5 rounded-full transition-all duration-500" style={{ width: `${p3}%` }}></div>
+                                  </div>
+                                </div>
+
+                                {/* แถบที่ 4: พอใจมากที่สุด */}
+                                <div>
+                                  <div className="flex justify-between mb-1 text-emerald-700 font-semibold">
+                                    <span>😍 พอใจมากที่สุด</span>
+                                    <span>{p4}% ({stat.scoresCount[4]} คน)</span>
+                                  </div>
+                                  <div className="w-full bg-slate-100 rounded-full h-3.5 overflow-hidden">
+                                    <div className="bg-emerald-500 h-3.5 rounded-full transition-all duration-500" style={{ width: `${p4}%` }}></div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
                         </div>
                       );
                     })}
@@ -899,7 +974,7 @@ export default function StaffEvaluationApp() {
             ออกจากระบบ
           </button>
 
-          {/* Header รูปพนักงาน + ชื่อและตำแหน่ง (นำหยดน้ำออกจากรูปโปรไฟล์แล้ว) */}
+          {/* Header รูปพนักงาน + ชื่อและตำแหน่ง */}
           <div className="flex flex-col items-center justify-center border-b border-sky-100 pb-2 mb-2 flex-shrink-0 text-center">
             <div className="mb-2">
               <img 
