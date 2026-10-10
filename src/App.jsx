@@ -515,7 +515,7 @@ export default function StaffEvaluationApp() {
           
           <div className="flex flex-col md:flex-row justify-between md:items-center border-b border-sky-100 pb-4 mb-6 gap-4">
             <div>
-              <h2 className="text-xl sm:text-2xl font-bold text-sky-900">แผงควบคุมผู้ดูแลระบบ</h2>
+              <h2 className="text-xl sm:text-2xl font-bold text-sky-900">สำหรับผู้ดูแลระบบ</h2>
               <p className="text-xs sm:text-sm text-sky-600">จัดการข้อมูลพนักงาน หัวข้อการประเมิน และรายงานสรุป</p>
             </div>
             
