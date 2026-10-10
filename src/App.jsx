@@ -409,16 +409,16 @@ export default function StaffEvaluationApp() {
   };
 
   const emotionLevels = [
-    { score: 1, emoji: '😡', label: 'ไม่พอใจเลย', sizeClass: 'text-3xl sm:text-4xl md:text-5xl' },
-    { score: 2, emoji: '😐', label: 'พอใจปานกลาง', sizeClass: 'text-4xl sm:text-5xl md:text-6xl' },
-    { score: 3, emoji: '😊', label: 'พอใจมาก', sizeClass: 'text-5xl sm:text-6xl md:text-7xl' },
-    { score: 4, emoji: '😍', label: 'พอใจมากที่สุด', sizeClass: 'text-6xl sm:text-7xl md:text-8xl' }
+    { score: 1, emoji: '😡', label: 'ไม่พอใจเลย', sizeClass: 'text-2xl sm:text-3xl md:text-4xl' },
+    { score: 2, emoji: '😐', label: 'พอใจปานกลาง', sizeClass: 'text-3xl sm:text-4xl md:text-5xl' },
+    { score: 3, emoji: '😊', label: 'พอใจมาก', sizeClass: 'text-4xl sm:text-5xl md:text-6xl' },
+    { score: 4, emoji: '😍', label: 'พอใจมากที่สุด', sizeClass: 'text-5xl sm:text-6xl md:text-7xl' }
   ];
 
   const visibleCriteriaList = criteriaList.filter(crit => crit.active !== false);
 
   return (
-    <div className="min-h-screen bg-sky-50 flex items-center justify-center p-2 sm:p-4 md:p-8 font-sans">
+    <div className="h-screen w-screen bg-sky-50 flex items-center justify-center p-2 sm:p-4 overflow-hidden font-sans">
       
       {/* 🔐 1. หน้าจอ Login พนักงาน */}
       {step === 'login' && (
@@ -496,7 +496,7 @@ export default function StaffEvaluationApp() {
 
       {/* 📊 3. หน้าจอ Admin Dashboard หลัก */}
       {step === 'admin-dashboard' && (
-        <div className="bg-white p-4 sm:p-8 rounded-3xl shadow-xl border border-sky-100 max-w-5xl w-full">
+        <div className="bg-white p-4 sm:p-8 rounded-3xl shadow-xl border border-sky-100 max-w-5xl w-full max-h-[90vh] overflow-y-auto">
           
           <div className="flex flex-col md:flex-row justify-between md:items-center border-b border-sky-100 pb-4 mb-6 gap-4">
             <div>
@@ -866,10 +866,24 @@ export default function StaffEvaluationApp() {
         </div>
       )}
 
-      {/* ⭐ 4. หน้าจอประเมินความพึงพอใจสำหรับลูกค้า (ปรับไอคอนให้ขยายเด่นชัด) */}
+      {/* ⭐ 4. หน้าจอประเมินความพึงพอใจสำหรับลูกค้า (ปรับให้พอดีหน้าจอเดียว 100vh ไม่ต้องเลื่อน) */}
       {step === 'evaluating' && currentStaff && (
-        <div className="bg-white p-4 sm:p-8 md:p-10 rounded-3xl shadow-xl border border-sky-100 w-full max-w-4xl md:max-w-5xl my-auto">
-          <div className="flex flex-col items-center border-b border-sky-100 pb-6 mb-8 relative">
+        <div className="bg-white w-full h-full sm:h-auto sm:max-h-[98vh] sm:max-w-4xl md:max-w-5xl rounded-none sm:rounded-3xl shadow-xl border border-sky-100 flex flex-col justify-between p-3 sm:p-5 md:p-6 overflow-hidden">
+          
+          {/* Header พนักงาน */}
+          <div className="flex items-center justify-between border-b border-sky-100 pb-3 mb-3 relative">
+            <div className="flex items-center space-x-3 sm:space-x-4">
+              <img 
+                src={currentStaff.photoUrl} 
+                alt={currentStaff.name} 
+                className="w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-full object-cover shadow-md border-2 border-sky-300 p-0.5 bg-white"
+              />
+              <div>
+                <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-sky-900 leading-tight">{currentStaff.name}</h2>
+                <p className="text-xs sm:text-sm text-sky-600 font-semibold">{currentStaff.position}</p>
+              </div>
+            </div>
+
             <button
               type="button"
               onClick={() => {
@@ -879,79 +893,71 @@ export default function StaffEvaluationApp() {
                 setScores({});
                 setComment('');
               }}
-              className="absolute top-0 right-0 text-xs sm:text-sm text-sky-600 hover:text-red-500 border border-sky-200 bg-sky-50 px-3 py-1.5 rounded-xl transition font-semibold"
+              className="text-xs text-sky-600 hover:text-red-500 border border-sky-200 bg-sky-50 px-3 py-1.5 rounded-xl transition font-semibold"
             >
               ออกจากระบบ
             </button>
+          </div>
 
-            {/* รูปโปรไฟล์พนักงาน */}
-            <div className="relative mb-4">
-              <img 
-                src={currentStaff.photoUrl} 
-                alt={currentStaff.name} 
-                className="w-48 h-48 sm:w-56 sm:h-56 md:w-64 md:h-64 rounded-full object-cover shadow-2xl border-4 border-sky-300 p-1.5 bg-white"
-              />
-              <div className="absolute bottom-2 right-3 bg-sky-500 text-white p-2.5 rounded-full shadow-lg text-lg">
-                💧
+          {/* Form หัวข้อประเมิน (จัดวางกระชับในหน้าเดียว) */}
+          <form onSubmit={handleSubmitScore} className="flex flex-col justify-between flex-1 space-y-3 overflow-hidden">
+            <div className="space-y-3 overflow-y-auto pr-1 flex-1">
+              {visibleCriteriaList.length === 0 ? (
+                <p className="text-center text-slate-400 py-6 text-sm">ไม่มีหัวข้อการประเมินในขณะนี้</p>
+              ) : (
+                visibleCriteriaList.map((crit, index) => (
+                  <div key={crit.id} className="bg-sky-50/70 border border-sky-100 p-3 sm:p-4 rounded-2xl shadow-2xs">
+                    <p className="font-bold text-sky-900 mb-2 text-center text-sm sm:text-base md:text-lg">
+                      {index + 1}. {crit.title}
+                    </p>
+                    
+                    {/* ปุ่มไอคอนประเมิน */}
+                    <div className="grid grid-cols-4 gap-2 sm:gap-3">
+                      {emotionLevels.map((item) => {
+                        const isSelected = scores[crit.id] === item.score;
+                        return (
+                          <button
+                            type="button"
+                            key={item.score}
+                            onClick={() => setScores({ ...scores, [crit.id]: item.score })}
+                            className={`flex flex-col items-center justify-center p-2 sm:p-3 rounded-2xl cursor-pointer transition-all duration-200 transform ${
+                              isSelected 
+                                ? 'bg-sky-200 scale-105 shadow-md border-2 border-sky-500 ring-2 ring-sky-300' 
+                                : 'bg-white hover:bg-sky-100/70 opacity-70 hover:opacity-100 border border-sky-100 hover:scale-105'
+                            }`}
+                          >
+                            <span className={`${item.sizeClass} mb-1 drop-shadow-xs`}>
+                              {item.emoji}
+                            </span>
+                            <span className={`text-[10px] sm:text-xs font-bold text-center truncate w-full ${
+                              isSelected ? 'text-sky-950 font-extrabold' : 'text-sky-800'
+                            }`}>
+                              {item.label}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))
+              )}
+
+              {/* ข้อเสนอแนะเพิ่มเติมแบบย่อ */}
+              <div>
+                <input 
+                  type="text"
+                  placeholder="ข้อเสนอแนะเพิ่มเติม (ถ้ามี)..."
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-sky-200 bg-sky-50/30 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-xs sm:text-sm text-sky-900 placeholder-sky-300"
+                />
               </div>
             </div>
 
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-sky-900 text-center">{currentStaff.name}</h2>
-            <p className="text-base sm:text-lg text-sky-600 font-semibold mt-1 text-center">{currentStaff.position}</p>
-          </div>
-
-          <form onSubmit={handleSubmitScore} className="space-y-8">
-            {visibleCriteriaList.length === 0 ? (
-              <p className="text-center text-slate-400 py-8 text-base">ไม่มีหัวข้อการประเมินในขณะนี้</p>
-            ) : (
-              visibleCriteriaList.map((crit, index) => (
-                <div key={crit.id} className="bg-sky-50/70 border border-sky-100 p-5 sm:p-6 rounded-3xl shadow-xs">
-                  <p className="font-bold text-sky-900 mb-4 text-center text-lg sm:text-xl md:text-2xl">{index + 1}. {crit.title}</p>
-                  
-                  {/* ปุ่มไอคอนประเมิน ปรับให้ขยายใหญ่โดดเด่นทั้งเวลากดเลือก (Selected) และชี้นำ (Hover) */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 py-4">
-                    {emotionLevels.map((item) => {
-                      const isSelected = scores[crit.id] === item.score;
-                      return (
-                        <button
-                          type="button"
-                          key={item.score}
-                          onClick={() => setScores({ ...scores, [crit.id]: item.score })}
-                          className={`flex flex-col items-center justify-center p-4 sm:p-6 rounded-2xl sm:rounded-3xl cursor-pointer transition-all duration-300 transform ${
-                            isSelected 
-                              ? 'bg-sky-200 scale-125 md:scale-130 shadow-2xl border-2 sm:border-4 border-sky-500 ring-4 ring-sky-300/80 -translate-y-2 z-10' 
-                              : 'bg-white hover:bg-sky-100/80 opacity-60 hover:opacity-100 border border-sky-100 hover:scale-115 hover:-translate-y-1'
-                          }`}
-                        >
-                          <span className={`${item.sizeClass} mb-2 transition-transform duration-300 drop-shadow-sm`}>
-                            {item.emoji}
-                          </span>
-                          <span className={`text-xs sm:text-sm md:text-base font-bold text-center transition-colors ${
-                            isSelected ? 'text-sky-950 font-extrabold' : 'text-sky-800'
-                          }`}>
-                            {item.label}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))
-            )}
-
-            <div>
-              <textarea 
-                placeholder="ข้อเสนอแนะเพิ่มเติม (ถ้ามี)..."
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                className="w-full p-4 rounded-2xl border border-sky-200 bg-sky-50/30 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-base sm:text-lg text-sky-900 placeholder-sky-300"
-                rows="3"
-              />
-            </div>
-
+            {/* ปุ่มยืนยัน (อยู่ด้านล่างสุดพอดีจอไม่ต้องเลื่อน) */}
             <button 
               type="submit"
-              className="w-full bg-sky-600 text-white py-4 sm:py-5 rounded-2xl font-bold hover:bg-sky-700 transition shadow-xl shadow-sky-200 text-lg sm:text-xl md:text-2xl"
+              className="w-full bg-sky-600 text-white py-3 sm:py-3.5 rounded-2xl font-bold hover:bg-sky-700 transition shadow-lg shadow-sky-200 text-base sm:text-lg flex-shrink-0"
             >
               ยืนยันการประเมิน
             </button>
