@@ -20,7 +20,7 @@ export default function StaffEvaluationApp() {
   // Admin States
   const [adminPin, setAdminPin] = useState('');
   const [evaluationsList, setEvaluationsList] = useState([]);
-  const [openGraphId, setOpenGraphId] = useState(null); // State สำหรับควบคุมการเปิด/ปิด กราฟแท่ง
+  const [openGraphId, setOpenGraphId] = useState(null);
 
   // Form States: เพิ่ม/แก้ไขพนักงาน
   const [editingEmpDocId, setEditingEmpDocId] = useState(null);
@@ -74,7 +74,6 @@ export default function StaffEvaluationApp() {
     }
   };
 
-  // ฟังก์ชันสั่งเบราว์เซอร์ให้แสดงผลแบบ Full Screen อัตโนมัติ
   const requestFullScreen = () => {
     const elem = document.documentElement;
     if (elem.requestFullscreen) {
@@ -125,7 +124,7 @@ export default function StaffEvaluationApp() {
     }
   };
 
-  // 3. เข้าสู่ระบบ Admin (PIN: 1234)
+  // 3. เข้าสู่ระบบ Admin
   const handleAdminLogin = (e) => {
     e.preventDefault();
     if (adminPin === '1234') {
@@ -279,6 +278,7 @@ export default function StaffEvaluationApp() {
 
   const filteredData = getFilteredEvaluations();
 
+  // คำนวณสถิติรายงานทั้งหมด
   const calculateReportStats = () => {
     const totalEvals = filteredData.length;
     
@@ -318,30 +318,43 @@ export default function StaffEvaluationApp() {
       }
     });
 
-    let topStaff = null;
-    let lowestStaff = null;
-    let maxAvg = -1;
-    let maxUnsatisfied = -1;
-
-    Object.entries(staffScoreMap).forEach(([empId, data]) => {
+    // คำนวณพนักงานเรียงตามคะแนนเฉลี่ยจากมากไปน้อย
+    const staffRanking = Object.entries(staffScoreMap).map(([empId, data]) => {
       const avg = data.count > 0 ? data.totalScore / data.count : 0;
-      if (avg > maxAvg) {
-        maxAvg = avg;
-        topStaff = { ...data, empId, avg };
-      }
-      if (data.score1Count > maxUnsatisfied) {
-        maxUnsatisfied = data.score1Count;
-        lowestStaff = { ...data, empId, unsatisfiedCount: data.score1Count };
+      return { ...data, empId, avg };
+    }).sort((a, b) => b.avg - a.avg);
+
+    // หาหัวข้อประเมินที่ได้คะแนนสูงสุด และ ต่ำสุด
+    let topCriteria = null;
+    let lowestCriteria = null;
+    let maxCritAvg = -1;
+    let minCritAvg = 999;
+
+    Object.values(criteriaStats).forEach(crit => {
+      if (crit.ratedCount > 0) {
+        const avg = crit.totalScoreSum / crit.ratedCount;
+        if (avg > maxCritAvg) {
+          maxCritAvg = avg;
+          topCriteria = { ...crit, avg };
+        }
+        if (avg < minCritAvg) {
+          minCritAvg = avg;
+          lowestCriteria = { ...crit, avg };
+        }
       }
     });
 
-    return { totalEvals, criteriaStats, topStaff, lowestStaff };
+    const topStaff = staffRanking.length > 0 ? staffRanking[0] : null;
+
+    return { totalEvals, criteriaStats, topStaff, staffRanking, topCriteria, lowestCriteria };
   };
 
   const reportStats = calculateReportStats();
 
+  // 📥 Export Excel (CSV) ปรับเพิ่มสรุปจัดอันดับพนักงาน
   const exportToExcel = () => {
     let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
+    csvContent += "=== ประวัติการประเมินย้อนหลัง ===\n";
     csvContent += "วันที่-เวลา,รหัสพนักงาน,ชื่อพนักงาน,ข้อเสนอแนะ,คะแนนรวม\n";
 
     filteredData.forEach(item => {
@@ -349,6 +362,13 @@ export default function StaffEvaluationApp() {
       const totalScore = item.scores ? Object.values(item.scores).reduce((a, b) => a + b, 0) : 0;
       const cleanComment = (item.comment || '').replace(/"/g, '""');
       csvContent += `"${dateStr}","${item.employeeId}","${item.employeeName}","${cleanComment}",${totalScore}\n`;
+    });
+
+    csvContent += "\n=== สรุปอันดับคะแนนพนักงาน (เรียงจากมากไปน้อย) ===\n";
+    csvContent += "อันดับ,รหัสพนักงาน,ชื่อพนักงาน,จำนวนครั้งที่รับประเมิน,คะแนนเฉลี่ย (เต็ม 4.00)\n";
+    
+    reportStats.staffRanking.forEach((staff, idx) => {
+      csvContent += `${idx + 1},"${staff.empId}","${staff.name}",${staff.count},${staff.avg.toFixed(2)}\n`;
     });
 
     const encodedUri = encodeURI(csvContent);
@@ -360,12 +380,13 @@ export default function StaffEvaluationApp() {
     document.body.removeChild(link);
   };
 
+  // 🖨️ Export PDF ปรับเพิ่ม กราฟแท่ง, สรุปหัวข้อสูงสุด-ต่ำสุด และสรุปอันดับพนักงาน
   const exportToPDF = () => {
     const staffName = selectedStaffFilter === 'all' 
       ? 'ภาพรวมพนักงานทุกคนรวมกัน' 
       : staffList.find(s => String(s.employeeId) === String(selectedStaffFilter))?.name || selectedStaffFilter;
 
-    const printWindow = window.open('', '_blank', 'width=900,height=700');
+    const printWindow = window.open('', '_blank', 'width=950,height=800');
     
     let criteriaSummaryHTML = '';
     Object.values(reportStats.criteriaStats).forEach((stat, idx) => {
@@ -377,13 +398,48 @@ export default function StaffEvaluationApp() {
       const avg = (stat.totalScoreSum / rated).toFixed(2);
 
       criteriaSummaryHTML += `
-        <div style="margin-bottom: 12px; border-bottom: 1px dashed #cbd5e1; padding-bottom: 8px;">
-          <b>${idx + 1}. ${stat.title}</b> (คะแนนเฉลี่ย: ${avg} / 4.00)<br/>
-          <span style="color: #dc2626;">😡 ไม่พอใจเลย: ${stat.scoresCount[1]} คน (${p1}%)</span> | 
-          <span style="color: #d97706;">😐 พอใจปานกลาง: ${stat.scoresCount[2]} คน (${p2}%)</span> | 
-          <span style="color: #2563eb;">😊 พอใจมาก: ${stat.scoresCount[3]} คน (${p3}%)</span> | 
-          <span style="color: #16a34a;">😍 พอใจมากที่สุด: ${stat.scoresCount[4]} คน (${p4}%)</span>
+        <div style="margin-bottom: 16px; background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px; border-radius: 10px;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+            <b style="font-size: 14px; color: #0369a1;">${idx + 1}. ${stat.title}</b>
+            <span style="background: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 6px; font-weight: bold; font-size: 12px;">คะแนนเฉลี่ย: ${avg} / 4.00</span>
+          </div>
+
+          <!-- กราฟแท่งใน PDF -->
+          <div style="margin-top: 8px; font-size: 11px;">
+            <div style="margin-bottom: 4px;">😡 ไม่พอใจเลย: ${stat.scoresCount[1]} คน (${p1}%)
+              <div style="background: #e2e8f0; height: 10px; border-radius: 5px; overflow: hidden; margin-top: 2px;">
+                <div style="background: #ef4444; width: ${p1}%; height: 100%;"></div>
+              </div>
+            </div>
+            <div style="margin-bottom: 4px;">😐 พอใจปานกลาง: ${stat.scoresCount[2]} คน (${p2}%)
+              <div style="background: #e2e8f0; height: 10px; border-radius: 5px; overflow: hidden; margin-top: 2px;">
+                <div style="background: #f59e0b; width: ${p2}%; height: 100%;"></div>
+              </div>
+            </div>
+            <div style="margin-bottom: 4px;">😊 พอใจมาก: ${stat.scoresCount[3]} คน (${p3}%)
+              <div style="background: #e2e8f0; height: 10px; border-radius: 5px; overflow: hidden; margin-top: 2px;">
+                <div style="background: #3b82f6; width: ${p3}%; height: 100%;"></div>
+              </div>
+            </div>
+            <div style="margin-bottom: 4px;">😍 พอใจมากที่สุด: ${stat.scoresCount[4]} คน (${p4}%)
+              <div style="background: #e2e8f0; height: 10px; border-radius: 5px; overflow: hidden; margin-top: 2px;">
+                <div style="background: #10b981; width: ${p4}%; height: 100%;"></div>
+              </div>
+            </div>
+          </div>
         </div>
+      `;
+    });
+
+    let staffRankingHTML = '';
+    reportStats.staffRanking.forEach((staff, idx) => {
+      staffRankingHTML += `
+        <tr>
+          <td style="padding: 6px; border-bottom: 1px solid #e2e8f0; text-align: center;"><b>อันดับ ${idx + 1}</b></td>
+          <td style="padding: 6px; border-bottom: 1px solid #e2e8f0;">${staff.name} (${staff.empId})</td>
+          <td style="padding: 6px; border-bottom: 1px solid #e2e8f0; text-align: center;">${staff.count} ครั้ง</td>
+          <td style="padding: 6px; border-bottom: 1px solid #e2e8f0; text-align: center; font-weight: bold; color: #0284c7;">${staff.avg.toFixed(2)} / 4.00</td>
+        </tr>
       `;
     });
 
@@ -392,27 +448,44 @@ export default function StaffEvaluationApp() {
         <head>
           <title>รายงานสรุปผลการประเมิน - การประปาส่วนภูมิภาคสาขานครพนม</title>
           <style>
-            body { font-family: 'Sarabun', sans-serif; padding: 20px; color: #0f172a; }
-            h1 { font-size: 20px; margin-bottom: 5px; color: #0369a1; }
-            h2 { font-size: 16px; margin-top: 20px; color: #0284c7; }
-            p { font-size: 12px; color: #64748b; margin-bottom: 15px; }
-            .card { background: #f0fdf4; border: 1px solid #bbf7d0; padding: 10px; border-radius: 8px; margin-bottom: 10px; font-size: 12px; }
+            body { font-family: 'Sarabun', sans-serif; padding: 20px; color: #0f172a; line-height: 1.4; }
+            h1 { font-size: 18px; margin-bottom: 5px; color: #0369a1; }
+            h2 { font-size: 14px; margin-top: 15px; color: #0284c7; border-bottom: 2px solid #bae6fd; padding-bottom: 4px; }
+            p { font-size: 12px; color: #64748b; margin-bottom: 12px; }
+            .card { background: #f0fdf4; border: 1px solid #bbf7d0; padding: 10px; border-radius: 8px; margin-bottom: 8px; font-size: 12px; }
+            table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
+            th { background: #f1f5f9; padding: 8px; border-bottom: 2px solid #cbd5e1; text-align: left; }
           </style>
         </head>
         <body>
           <h1>💧 รายงานสรุปผลการประเมินความพึงพอใจ (การประปาส่วนภูมิภาคสาขานครพนม)</h1>
           <p>ช่วงเวลา: <b>${reportPeriod.toUpperCase()}</b> | พนักงาน: <b>${staffName}</b> | ผู้ประเมินทั้งหมด: <b>${reportStats.totalEvals} ครั้ง</b></p>
           
-          <h2>📊 สรุปผลคะแนนแต่ละหัวข้อ</h2>
-          ${criteriaSummaryHTML || '<p>ยังไม่มีข้อมูลหัวข้อประเมิน</p>'}
+          <h2>📌 สรุปวิเคราะห์หัวข้อการประเมิน (สูงสุด & ต่ำสุด)</h2>
+          <div className="card">
+            💚 <b>หัวข้อที่ลูกค้าพึงพอใจมากที่สุด:</b> ${reportStats.topCriteria ? `${reportStats.topCriteria.title} (คะแนนเฉลี่ย ${reportStats.topCriteria.avg.toFixed(2)}/4.00)` : 'ไม่มีข้อมูล'}
+          </div>
+          <div className="card" style="background: #fff1f2; border-color: #fecdd3;">
+            💔 <b>หัวข้อที่ลูกค้าพึงพอใจน้อยที่สุด:</b> ${reportStats.lowestCriteria ? `${reportStats.lowestCriteria.title} (คะแนนเฉลี่ย ${reportStats.lowestCriteria.avg.toFixed(2)}/4.00)` : 'ไม่มีข้อมูล'}
+          </div>
 
-          <h2>🏆 สรุปพนักงานดีเด่น & จุดที่ต้องปรับปรุง</h2>
-          <div class="card">
-            ⭐ <b>พนักงานที่ได้รับความพึงพอใจสูงสุด:</b> ${reportStats.topStaff ? `${reportStats.topStaff.name} (รหัส: ${reportStats.topStaff.empId}) - คะแนนเฉลี่ย ${reportStats.topStaff.avg.toFixed(2)}/4.0` : 'ไม่มีข้อมูล'}
-          </div>
-          <div class="card" style="background: #fef2f2; border-color: #fecaca;">
-            ⚠️ <b>พนักงานที่ถูกประเมินว่าไม่พอใจเลยมากที่สุด:</b> ${reportStats.lowestStaff && reportStats.lowestStaff.unsatisfiedCount > 0 ? `${reportStats.lowestStaff.name} (รหัส: ${reportStats.lowestStaff.empId}) - จำนวน ${reportStats.lowestStaff.unsatisfiedCount} ครั้ง` : 'ไม่มีข้อมูล'}
-          </div>
+          <h2>🏆 สรุปจัดอันดับพนักงานเรียงตามคะแนนความพึงพอใจ (จากมากไปน้อย)</h2>
+          <table>
+            <thead>
+              <tr>
+                <th style="text-align: center;">อันดับ</th>
+                <th>ชื่อ-นามสกุล (รหัส)</th>
+                <th style="text-align: center;">จำนวนประเมิน</th>
+                <th style="text-align: center;">คะแนนเฉลี่ย</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${staffRankingHTML || '<tr><td colspan="4" style="text-align:center;">ไม่มีข้อมูลพนักงาน</td></tr>'}
+            </tbody>
+          </table>
+
+          <h2>📊 สรุปผลคะแนนและกราฟแท่งแยกตามหัวข้อ</h2>
+          ${criteriaSummaryHTML || '<p>ยังไม่มีข้อมูลหัวข้อประเมิน</p>'}
 
           <script>
             window.onload = function() { window.print(); }
@@ -595,6 +668,63 @@ export default function StaffEvaluationApp() {
                 </div>
               </div>
 
+              {/* 📌 ส่วนสรุปหัวข้อพึงพอใจสูงสุด & ต่ำสุด */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-emerald-50/70 p-4 rounded-2xl border border-emerald-200">
+                  <h4 className="text-xs sm:text-sm font-bold text-emerald-900 mb-1">💚 หัวข้อที่ลูกค้าพึงพอใจมากที่สุด</h4>
+                  {reportStats.topCriteria ? (
+                    <div className="text-xs sm:text-sm text-emerald-800 space-y-1">
+                      <p><b>หัวข้อ:</b> {reportStats.topCriteria.title}</p>
+                      <p><b>คะแนนเฉลี่ย:</b> {reportStats.topCriteria.avg.toFixed(2)} / 4.00 คะแนน</p>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-slate-400">ยังไม่มีข้อมูลการประเมิน</p>
+                  )}
+                </div>
+
+                <div className="bg-rose-50/70 p-4 rounded-2xl border border-rose-200">
+                  <h4 className="text-xs sm:text-sm font-bold text-rose-900 mb-1">💔 หัวข้อที่ลูกค้าพึงพอใจน้อยที่สุด</h4>
+                  {reportStats.lowestCriteria ? (
+                    <div className="text-xs sm:text-sm text-rose-800 space-y-1">
+                      <p><b>หัวข้อ:</b> {reportStats.lowestCriteria.title}</p>
+                      <p><b>คะแนนเฉลี่ย:</b> {reportStats.lowestCriteria.avg.toFixed(2)} / 4.00 คะแนน</p>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-slate-400">ยังไม่มีข้อมูลการประเมิน</p>
+                  )}
+                </div>
+              </div>
+
+              {/* 🏆 สรุปเรียงลำดับพนักงานจากมากไปหาน้อย */}
+              <div className="bg-white p-4 sm:p-6 rounded-2xl border border-sky-200 shadow-sm space-y-3">
+                <h3 className="text-xs sm:text-sm font-bold text-sky-900 border-b border-sky-100 pb-2">🏆 สรุปอันดับพนักงานเรียงตามคะแนนความพึงพอใจ (จากมากไปน้อย)</h3>
+                
+                {reportStats.staffRanking.length === 0 ? (
+                  <p className="text-xs text-slate-400 text-center py-4">ยังไม่มีข้อมูลการประเมินพนักงาน</p>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {reportStats.staffRanking.map((staff, idx) => (
+                      <div key={staff.empId} className="flex items-center justify-between p-3 bg-sky-50/50 rounded-xl border border-sky-100">
+                        <div className="flex items-center space-x-2.5">
+                          <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white ${
+                            idx === 0 ? 'bg-amber-500' : idx === 1 ? 'bg-slate-400' : idx === 2 ? 'bg-amber-700' : 'bg-sky-400'
+                          }`}>
+                            {idx + 1}
+                          </span>
+                          <div>
+                            <p className="text-xs sm:text-sm font-bold text-sky-900">{staff.name}</p>
+                            <p className="text-[10px] text-sky-600">รหัส: {staff.empId} | ประเมิน {staff.count} ครั้ง</p>
+                          </div>
+                        </div>
+                        <span className="text-xs font-extrabold text-sky-800 bg-white px-2 py-1 rounded-lg border border-sky-200 shadow-2xs">
+                          {staff.avg.toFixed(2)} / 4.0
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               {/* สรุปสถิติคะแนนแต่ละหัวข้อ */}
               <div className="bg-white p-4 sm:p-6 rounded-2xl border border-sky-200 shadow-sm space-y-4">
                 <h3 className="text-xs sm:text-sm font-bold text-sky-900 border-b border-sky-100 pb-2">📊 สรุปผลการประเมินแยกตามหัวข้อ (คะแนนและเปอร์เซ็นต์)</h3>
@@ -622,7 +752,6 @@ export default function StaffEvaluationApp() {
                                 คะแนนเฉลี่ย: {avg} / 4.00
                               </span>
                               
-                              {/* ปุ่มกดแสดง/ซ่อน กราฟแท่ง */}
                               <button 
                                 onClick={() => setOpenGraphId(isGraphOpen ? null : stat.id)}
                                 className={`flex items-center space-x-1 px-3 py-1 rounded-md text-xs font-bold transition shadow-xs ${
@@ -635,7 +764,6 @@ export default function StaffEvaluationApp() {
                             </div>
                           </div>
 
-                          {/* สรุปแบบกล่องข้อความ */}
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-[11px] sm:text-xs">
                             <div className="bg-white p-2 rounded-lg border border-red-100 text-red-700">
                               😡 ไม่พอใจเลย: <b>{stat.scoresCount[1]} คน</b> ({p1}%)
@@ -651,13 +779,11 @@ export default function StaffEvaluationApp() {
                             </div>
                           </div>
 
-                          {/* 📊 ส่วนแสดงกราฟแท่งเปอร์เซ็นต์ (เมื่อกดคลิกไอคอนกราฟ) */}
                           {isGraphOpen && (
-                            <div className="bg-white p-4 rounded-xl border border-sky-200 mt-2 space-y-3 animate-fadeIn">
+                            <div className="bg-white p-4 rounded-xl border border-sky-200 mt-2 space-y-3">
                               <p className="text-xs font-bold text-sky-900 border-b border-sky-100 pb-1">📈 กราฟแท่งเปรียบเทียบสัดส่วนเปอร์เซ็นต์การประเมิน</p>
                               
                               <div className="space-y-2 text-xs">
-                                {/* แถบที่ 1: ไม่พอใจเลย */}
                                 <div>
                                   <div className="flex justify-between mb-1 text-red-700 font-semibold">
                                     <span>😡 ไม่พอใจเลย</span>
@@ -668,7 +794,6 @@ export default function StaffEvaluationApp() {
                                   </div>
                                 </div>
 
-                                {/* แถบที่ 2: พอใจปานกลาง */}
                                 <div>
                                   <div className="flex justify-between mb-1 text-amber-700 font-semibold">
                                     <span>😐 พอใจปานกลาง</span>
@@ -679,7 +804,6 @@ export default function StaffEvaluationApp() {
                                   </div>
                                 </div>
 
-                                {/* แถบที่ 3: พอใจมาก */}
                                 <div>
                                   <div className="flex justify-between mb-1 text-blue-700 font-semibold">
                                     <span>😊 พอใจมาก</span>
@@ -690,7 +814,6 @@ export default function StaffEvaluationApp() {
                                   </div>
                                 </div>
 
-                                {/* แถบที่ 4: พอใจมากที่สุด */}
                                 <div>
                                   <div className="flex justify-between mb-1 text-emerald-700 font-semibold">
                                     <span>😍 พอใจมากที่สุด</span>
@@ -709,33 +832,6 @@ export default function StaffEvaluationApp() {
                     })}
                   </div>
                 )}
-              </div>
-
-              {/* สรุปพนักงานสูงสุดและต่ำสุด */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-emerald-50/70 p-4 rounded-2xl border border-emerald-200">
-                  <h4 className="text-xs sm:text-sm font-bold text-emerald-900 mb-1">⭐ พนักงานที่ได้รับความพอใจสูงสุด (ดีเยี่ยม)</h4>
-                  {reportStats.topStaff ? (
-                    <div className="text-xs sm:text-sm text-emerald-800 space-y-1">
-                      <p><b>ชื่อ:</b> {reportStats.topStaff.name} (รหัส: {reportStats.topStaff.empId})</p>
-                      <p><b>คะแนนเฉลี่ยรวม:</b> {reportStats.topStaff.avg.toFixed(2)} / 4.00 คะแนน</p>
-                    </div>
-                  ) : (
-                    <p className="text-xs text-slate-400">ยังไม่มีข้อมูลการประเมิน</p>
-                  )}
-                </div>
-
-                <div className="bg-red-50/70 p-4 rounded-2xl border border-red-200">
-                  <h4 className="text-xs sm:text-sm font-bold text-red-900 mb-1">⚠️ พนักงานที่ถูกประเมินไม่พอใจเลยมากที่สุด</h4>
-                  {reportStats.lowestStaff && reportStats.lowestStaff.unsatisfiedCount > 0 ? (
-                    <div className="text-xs sm:text-sm text-red-800 space-y-1">
-                      <p><b>ชื่อ:</b> {reportStats.lowestStaff.name} (รหัส: {reportStats.lowestStaff.empId})</p>
-                      <p><b>จำนวนครั้งที่ไม่พอใจ:</b> {reportStats.lowestStaff.unsatisfiedCount} ครั้ง</p>
-                    </div>
-                  ) : (
-                    <p className="text-xs text-slate-500">ยอดเยี่ยม! ไม่มีรายการไม่พอใจเลยในช่วงเวลานี้</p>
-                  )}
-                </div>
               </div>
 
               {/* ตารางแสดงรายละเอียดประวัติ */}
@@ -958,7 +1054,6 @@ export default function StaffEvaluationApp() {
       {step === 'evaluating' && currentStaff && (
         <div className="bg-white w-screen h-screen flex flex-col justify-between p-3 sm:p-5 md:p-6 overflow-hidden relative">
           
-          {/* ปุ่มออกจากระบบลอยมุมขวาบน */}
           <button
             type="button"
             onClick={() => {
@@ -974,7 +1069,6 @@ export default function StaffEvaluationApp() {
             ออกจากระบบ
           </button>
 
-          {/* Header รูปพนักงาน + ชื่อและตำแหน่ง */}
           <div className="flex flex-col items-center justify-center border-b border-sky-100 pb-2 mb-2 flex-shrink-0 text-center">
             <div className="mb-2">
               <img 
@@ -987,11 +1081,9 @@ export default function StaffEvaluationApp() {
             <p className="text-xs sm:text-sm md:text-base text-sky-600 font-semibold">{currentStaff.position}</p>
           </div>
 
-          {/* Form หัวข้อประเมิน */}
           <form onSubmit={handleSubmitScore} className="flex flex-col justify-between flex-1 space-y-2 overflow-hidden">
             <div className="space-y-2 overflow-y-auto pr-1 flex-1 flex flex-col justify-around">
               
-              {/* ข้อความเพิ่มเติมพร้อมไอคอนหยดน้ำ 💧 หน้า-หลัง */}
               <div className="text-center py-1">
                 <h3 className="text-base sm:text-lg md:text-xl font-bold text-sky-800 bg-sky-100/70 py-2 px-4 rounded-2xl shadow-2xs inline-block">
                   💧 โปรดประเมินความพึงพอใจในการรับบริการครั้งนี้ 💧
@@ -1007,7 +1099,6 @@ export default function StaffEvaluationApp() {
                       {index + 1}. {crit.title}
                     </p>
                     
-                    {/* ปุ่มไอคอนประเมิน */}
                     <div className="grid grid-cols-4 gap-2 sm:gap-3">
                       {emotionLevels.map((item) => {
                         const isSelected = scores[crit.id] === item.score;
@@ -1038,7 +1129,6 @@ export default function StaffEvaluationApp() {
                 ))
               )}
 
-              {/* ข้อเสนอแนะเพิ่มเติมแบบย่อ */}
               <div>
                 <input 
                   type="text"
@@ -1050,7 +1140,6 @@ export default function StaffEvaluationApp() {
               </div>
             </div>
 
-            {/* ปุ่มยืนยัน */}
             <button 
               type="submit"
               className="w-full bg-sky-600 text-white py-3 sm:py-4 rounded-2xl font-bold hover:bg-sky-700 transition shadow-lg shadow-sky-200 text-base sm:text-lg flex-shrink-0"
