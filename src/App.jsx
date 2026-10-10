@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { db } from './firebaseConfig';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
-import pwaLogo from './assets/pwa.WEBP'; // 👈 นำเข้ารูปโลโก้ประปาจาก src/assets
+import pwaLogo from './assets/pwa.webp'; // 👈 นำเข้ารูปโลโก้ประปาจาก src/assets
 
 export default function StaffEvaluationApp() {
   const [step, setStep] = useState('login'); // 'login' | 'evaluating' | 'success' | 'admin-login' | 'admin-dashboard'
