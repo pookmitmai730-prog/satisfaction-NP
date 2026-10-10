@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { db } from './firebaseConfig';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
+import pwaLogo from './assets/pwa.WEBP'; // 👈 นำเข้ารูปโลโก้ประปาจาก src/assets
 
 export default function StaffEvaluationApp() {
   const [step, setStep] = useState('login'); // 'login' | 'evaluating' | 'success' | 'admin-login' | 'admin-dashboard'
@@ -278,7 +279,6 @@ export default function StaffEvaluationApp() {
 
   const filteredData = getFilteredEvaluations();
 
-  // คำนวณสถิติรายงานทั้งหมด
   const calculateReportStats = () => {
     const totalEvals = filteredData.length;
     
@@ -318,13 +318,11 @@ export default function StaffEvaluationApp() {
       }
     });
 
-    // คำนวณพนักงานเรียงตามคะแนนเฉลี่ยจากมากไปน้อย
     const staffRanking = Object.entries(staffScoreMap).map(([empId, data]) => {
       const avg = data.count > 0 ? data.totalScore / data.count : 0;
       return { ...data, empId, avg };
     }).sort((a, b) => b.avg - a.avg);
 
-    // หาหัวข้อประเมินที่ได้คะแนนสูงสุด และ ต่ำสุด
     let topCriteria = null;
     let lowestCriteria = null;
     let maxCritAvg = -1;
@@ -351,7 +349,6 @@ export default function StaffEvaluationApp() {
 
   const reportStats = calculateReportStats();
 
-  // 📥 Export Excel (CSV) ปรับเพิ่มสรุปจัดอันดับพนักงาน
   const exportToExcel = () => {
     let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
     csvContent += "=== ประวัติการประเมินย้อนหลัง ===\n";
@@ -380,7 +377,6 @@ export default function StaffEvaluationApp() {
     document.body.removeChild(link);
   };
 
-  // 🖨️ Export PDF ปรับเพิ่ม กราฟแท่ง, สรุปหัวข้อสูงสุด-ต่ำสุด และสรุปอันดับพนักงาน
   const exportToPDF = () => {
     const staffName = selectedStaffFilter === 'all' 
       ? 'ภาพรวมพนักงานทุกคนรวมกัน' 
@@ -404,7 +400,6 @@ export default function StaffEvaluationApp() {
             <span style="background: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 6px; font-weight: bold; font-size: 12px;">คะแนนเฉลี่ย: ${avg} / 4.00</span>
           </div>
 
-          <!-- กราฟแท่งใน PDF -->
           <div style="margin-top: 8px; font-size: 11px;">
             <div style="margin-bottom: 4px;">😡 ไม่พอใจเลย: ${stat.scoresCount[1]} คน (${p1}%)
               <div style="background: #e2e8f0; height: 10px; border-radius: 5px; overflow: hidden; margin-top: 2px;">
@@ -511,10 +506,17 @@ export default function StaffEvaluationApp() {
       {/* 🔐 1. หน้าจอ Login พนักงาน */}
       {step === 'login' && (
         <div className="bg-white p-6 sm:p-10 rounded-3xl shadow-xl border border-sky-100 max-w-md w-full text-center relative">
-          <div className="w-16 h-16 sm:w-20 sm:h-20 bg-sky-500 rounded-3xl mx-auto flex items-center justify-center text-white text-3xl sm:text-4xl mb-4 shadow-md shadow-sky-200">
-            💧
+          
+          {/* 💧 เปลี่ยนเป็นโลโก้ประปาจาก pwa.WEBP */}
+          <div className="mb-4">
+            <img 
+              src={pwaLogo} 
+              alt="โลโก้ กปภ." 
+              className="w-24 h-24 sm:w-28 sm:h-28 mx-auto object-contain drop-shadow-md"
+            />
           </div>
-          <h2 className="text-2xl sm:text-3xl font-bold text-sky-900 mb-2">ระบบประเมินความพึงพอใจ</h2>
+
+          <h2 className="text-xl sm:text-2xl font-bold text-sky-900 mb-2">ระบบประเมินความพึงพอใจการให้บริการ กปภ.สาขานครพนม</h2>
           <p className="text-sm sm:text-base text-sky-600/70 mb-6">กรุณากรอกรหัสพนักงานเพื่อเริ่มรับการประเมิน</p>
           
           <form onSubmit={handleLogin} className="space-y-4">
@@ -668,7 +670,6 @@ export default function StaffEvaluationApp() {
                 </div>
               </div>
 
-              {/* 📌 ส่วนสรุปหัวข้อพึงพอใจสูงสุด & ต่ำสุด */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="bg-emerald-50/70 p-4 rounded-2xl border border-emerald-200">
                   <h4 className="text-xs sm:text-sm font-bold text-emerald-900 mb-1">💚 หัวข้อที่ลูกค้าพึงพอใจมากที่สุด</h4>
@@ -695,7 +696,6 @@ export default function StaffEvaluationApp() {
                 </div>
               </div>
 
-              {/* 🏆 สรุปเรียงลำดับพนักงานจากมากไปหาน้อย */}
               <div className="bg-white p-4 sm:p-6 rounded-2xl border border-sky-200 shadow-sm space-y-3">
                 <h3 className="text-xs sm:text-sm font-bold text-sky-900 border-b border-sky-100 pb-2">🏆 สรุปอันดับพนักงานเรียงตามคะแนนความพึงพอใจ (จากมากไปน้อย)</h3>
                 
@@ -725,7 +725,6 @@ export default function StaffEvaluationApp() {
                 )}
               </div>
 
-              {/* สรุปสถิติคะแนนแต่ละหัวข้อ */}
               <div className="bg-white p-4 sm:p-6 rounded-2xl border border-sky-200 shadow-sm space-y-4">
                 <h3 className="text-xs sm:text-sm font-bold text-sky-900 border-b border-sky-100 pb-2">📊 สรุปผลการประเมินแยกตามหัวข้อ (คะแนนและเปอร์เซ็นต์)</h3>
                 
@@ -834,7 +833,6 @@ export default function StaffEvaluationApp() {
                 )}
               </div>
 
-              {/* ตารางแสดงรายละเอียดประวัติ */}
               <div className="overflow-x-auto">
                 <h3 className="text-xs sm:text-sm font-bold text-sky-900 mb-2">📋 ประวัติการประเมินย้อนหลัง</h3>
                 <table className="w-full text-left text-xs sm:text-sm border-collapse">
