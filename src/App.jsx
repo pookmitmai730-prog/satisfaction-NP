@@ -879,48 +879,50 @@ export default function StaffEvaluationApp() {
         </div>
       )}
 
-      {/* ⭐ 4. หน้าจอประเมินความพึงพอใจสำหรับลูกค้า (ขยายเต็มจอ 100vw x 100vh ไร้ขอบ ไม่มีเลื่อน) */}
+      {/* ⭐ 4. หน้าจอประเมินความพึงพอใจสำหรับลูกค้า (รูปโปรไฟล์ขยายใหญ่ 2 เท่า + จัดกึ่งกลางเต็มตา) */}
       {step === 'evaluating' && currentStaff && (
-        <div className="bg-white w-screen h-screen flex flex-col justify-between p-3 sm:p-5 md:p-6 overflow-hidden">
+        <div className="bg-white w-screen h-screen flex flex-col justify-between p-3 sm:p-5 md:p-6 overflow-hidden relative">
           
-          {/* Header พนักงาน */}
-          <div className="flex items-center justify-between border-b border-sky-100 pb-3 mb-2 flex-shrink-0">
-            <div className="flex items-center space-x-3 sm:space-x-4">
+          {/* ปุ่มออกจากระบบลอยมุมขวาบน */}
+          <button
+            type="button"
+            onClick={() => {
+              if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
+              setStep('login');
+              setInputEmpId('');
+              setCurrentStaff(null);
+              setScores({});
+              setComment('');
+            }}
+            className="absolute top-3 right-3 text-xs text-sky-600 hover:text-red-500 border border-sky-200 bg-sky-50 px-3 py-1.5 rounded-xl transition font-semibold z-20"
+          >
+            ออกจากระบบ
+          </button>
+
+          {/* Header รูปพนักงานใหญ่ขึ้น 2 เท่า + จัดอยู่ตรงกลาง */}
+          <div className="flex flex-col items-center justify-center border-b border-sky-100 pb-2 mb-2 flex-shrink-0 text-center">
+            <div className="relative mb-2">
               <img 
                 src={currentStaff.photoUrl} 
                 alt={currentStaff.name} 
-                className="w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-full object-cover shadow-md border-2 border-sky-300 p-0.5 bg-white"
+                className="w-36 h-36 sm:w-44 sm:h-44 md:w-52 md:h-52 rounded-full object-cover shadow-xl border-4 border-sky-300 p-1 bg-white mx-auto"
               />
-              <div>
-                <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-sky-900 leading-tight">{currentStaff.name}</h2>
-                <p className="text-xs sm:text-sm text-sky-600 font-semibold">{currentStaff.position}</p>
+              <div className="absolute bottom-1 right-2 bg-sky-500 text-white p-2 rounded-full shadow-md text-base">
+                💧
               </div>
             </div>
-
-            <button
-              type="button"
-              onClick={() => {
-                if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
-                setStep('login');
-                setInputEmpId('');
-                setCurrentStaff(null);
-                setScores({});
-                setComment('');
-              }}
-              className="text-xs text-sky-600 hover:text-red-500 border border-sky-200 bg-sky-50 px-3 py-1.5 rounded-xl transition font-semibold"
-            >
-              ออกจากระบบ
-            </button>
+            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-sky-900 leading-tight">{currentStaff.name}</h2>
+            <p className="text-xs sm:text-sm md:text-base text-sky-600 font-semibold">{currentStaff.position} (รหัส: {currentStaff.employeeId})</p>
           </div>
 
-          {/* Form หัวข้อประเมิน (เต็มหน้าจอพอดีเป๊ะ) */}
+          {/* Form หัวข้อประเมิน */}
           <form onSubmit={handleSubmitScore} className="flex flex-col justify-between flex-1 space-y-2 overflow-hidden">
             <div className="space-y-2 overflow-y-auto pr-1 flex-1 flex flex-col justify-around">
               {visibleCriteriaList.length === 0 ? (
                 <p className="text-center text-slate-400 py-6 text-sm">ไม่มีหัวข้อการประเมินในขณะนี้</p>
               ) : (
                 visibleCriteriaList.map((crit, index) => (
-                  <div key={crit.id} className="bg-sky-50/70 border border-sky-100 p-2 sm:p-3.5 rounded-2xl shadow-2xs">
+                  <div key={crit.id} className="bg-sky-50/70 border border-sky-100 p-2 sm:p-3 rounded-2xl shadow-2xs">
                     <p className="font-bold text-sky-900 mb-1.5 text-center text-sm sm:text-base md:text-lg">
                       {index + 1}. {crit.title}
                     </p>
