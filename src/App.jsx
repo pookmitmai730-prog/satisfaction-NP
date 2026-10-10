@@ -73,6 +73,18 @@ export default function StaffEvaluationApp() {
     }
   };
 
+  // ฟังก์ชันสั่งเบราว์เซอร์ให้แสดงผลแบบ Full Screen อัตโนมัติ
+  const requestFullScreen = () => {
+    const elem = document.documentElement;
+    if (elem.requestFullscreen) {
+      elem.requestFullscreen().catch(err => console.log(err));
+    } else if (elem.webkitRequestFullscreen) {
+      elem.webkitRequestFullscreen();
+    } else if (elem.msRequestFullscreen) {
+      elem.msRequestFullscreen();
+    }
+  };
+
   // 1. เข้าสู่ระบบพนักงาน
   const handleLogin = (e) => {
     e.preventDefault();
@@ -84,6 +96,7 @@ export default function StaffEvaluationApp() {
     if (foundStaff) {
       setCurrentStaff(foundStaff);
       setStep('evaluating');
+      requestFullScreen(); // สั่งเต็มจออัตโนมัติเมื่อเข้าหน้าประเมิน
     } else {
       setErrorMsg('ไม่พบรหัสพนักงานนี้ในระบบ กรุณาตรวจสอบอีกครั้ง');
     }
@@ -418,7 +431,7 @@ export default function StaffEvaluationApp() {
   const visibleCriteriaList = criteriaList.filter(crit => crit.active !== false);
 
   return (
-    <div className="h-screen w-screen bg-sky-50 flex items-center justify-center p-2 sm:p-4 overflow-hidden font-sans">
+    <div className="h-screen w-screen bg-sky-50 flex items-center justify-center p-0 m-0 overflow-hidden font-sans">
       
       {/* 🔐 1. หน้าจอ Login พนักงาน */}
       {step === 'login' && (
@@ -866,12 +879,12 @@ export default function StaffEvaluationApp() {
         </div>
       )}
 
-      {/* ⭐ 4. หน้าจอประเมินความพึงพอใจสำหรับลูกค้า (ปรับให้พอดีหน้าจอเดียว 100vh ไม่ต้องเลื่อน) */}
+      {/* ⭐ 4. หน้าจอประเมินความพึงพอใจสำหรับลูกค้า (ขยายเต็มจอ 100vw x 100vh ไร้ขอบ ไม่มีเลื่อน) */}
       {step === 'evaluating' && currentStaff && (
-        <div className="bg-white w-full h-full sm:h-auto sm:max-h-[98vh] sm:max-w-4xl md:max-w-5xl rounded-none sm:rounded-3xl shadow-xl border border-sky-100 flex flex-col justify-between p-3 sm:p-5 md:p-6 overflow-hidden">
+        <div className="bg-white w-screen h-screen flex flex-col justify-between p-3 sm:p-5 md:p-6 overflow-hidden">
           
           {/* Header พนักงาน */}
-          <div className="flex items-center justify-between border-b border-sky-100 pb-3 mb-3 relative">
+          <div className="flex items-center justify-between border-b border-sky-100 pb-3 mb-2 flex-shrink-0">
             <div className="flex items-center space-x-3 sm:space-x-4">
               <img 
                 src={currentStaff.photoUrl} 
@@ -887,6 +900,7 @@ export default function StaffEvaluationApp() {
             <button
               type="button"
               onClick={() => {
+                if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
                 setStep('login');
                 setInputEmpId('');
                 setCurrentStaff(null);
@@ -899,15 +913,15 @@ export default function StaffEvaluationApp() {
             </button>
           </div>
 
-          {/* Form หัวข้อประเมิน (จัดวางกระชับในหน้าเดียว) */}
-          <form onSubmit={handleSubmitScore} className="flex flex-col justify-between flex-1 space-y-3 overflow-hidden">
-            <div className="space-y-3 overflow-y-auto pr-1 flex-1">
+          {/* Form หัวข้อประเมิน (เต็มหน้าจอพอดีเป๊ะ) */}
+          <form onSubmit={handleSubmitScore} className="flex flex-col justify-between flex-1 space-y-2 overflow-hidden">
+            <div className="space-y-2 overflow-y-auto pr-1 flex-1 flex flex-col justify-around">
               {visibleCriteriaList.length === 0 ? (
                 <p className="text-center text-slate-400 py-6 text-sm">ไม่มีหัวข้อการประเมินในขณะนี้</p>
               ) : (
                 visibleCriteriaList.map((crit, index) => (
-                  <div key={crit.id} className="bg-sky-50/70 border border-sky-100 p-3 sm:p-4 rounded-2xl shadow-2xs">
-                    <p className="font-bold text-sky-900 mb-2 text-center text-sm sm:text-base md:text-lg">
+                  <div key={crit.id} className="bg-sky-50/70 border border-sky-100 p-2 sm:p-3.5 rounded-2xl shadow-2xs">
+                    <p className="font-bold text-sky-900 mb-1.5 text-center text-sm sm:text-base md:text-lg">
                       {index + 1}. {crit.title}
                     </p>
                     
@@ -954,10 +968,10 @@ export default function StaffEvaluationApp() {
               </div>
             </div>
 
-            {/* ปุ่มยืนยัน (อยู่ด้านล่างสุดพอดีจอไม่ต้องเลื่อน) */}
+            {/* ปุ่มยืนยัน */}
             <button 
               type="submit"
-              className="w-full bg-sky-600 text-white py-3 sm:py-3.5 rounded-2xl font-bold hover:bg-sky-700 transition shadow-lg shadow-sky-200 text-base sm:text-lg flex-shrink-0"
+              className="w-full bg-sky-600 text-white py-3 sm:py-4 rounded-2xl font-bold hover:bg-sky-700 transition shadow-lg shadow-sky-200 text-base sm:text-lg flex-shrink-0"
             >
               ยืนยันการประเมิน
             </button>
