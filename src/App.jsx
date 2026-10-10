@@ -96,7 +96,7 @@ export default function StaffEvaluationApp() {
     if (foundStaff) {
       setCurrentStaff(foundStaff);
       setStep('evaluating');
-      requestFullScreen(); // สั่งเต็มจออัตโนมัติเมื่อเข้าหน้าประเมิน
+      requestFullScreen();
     } else {
       setErrorMsg('ไม่พบรหัสพนักงานนี้ในระบบ กรุณาตรวจสอบอีกครั้ง');
     }
@@ -879,7 +879,7 @@ export default function StaffEvaluationApp() {
         </div>
       )}
 
-      {/* ⭐ 4. หน้าจอประเมินความพึงพอใจสำหรับลูกค้า (รูปโปรไฟล์ขยายใหญ่ 2 เท่า + จัดกึ่งกลางเต็มตา) */}
+      {/* ⭐ 4. หน้าจอประเมินความพึงพอใจสำหรับลูกค้า (ซ่อนรหัสพนักงาน แสดงเฉพาะตำแหน่ง) */}
       {step === 'evaluating' && currentStaff && (
         <div className="bg-white w-screen h-screen flex flex-col justify-between p-3 sm:p-5 md:p-6 overflow-hidden relative">
           
@@ -899,7 +899,7 @@ export default function StaffEvaluationApp() {
             ออกจากระบบ
           </button>
 
-          {/* Header รูปพนักงานใหญ่ขึ้น 2 เท่า + จัดอยู่ตรงกลาง */}
+          {/* Header รูปพนักงาน + ชื่อและตำแหน่ง */}
           <div className="flex flex-col items-center justify-center border-b border-sky-100 pb-2 mb-2 flex-shrink-0 text-center">
             <div className="relative mb-2">
               <img 
@@ -912,7 +912,7 @@ export default function StaffEvaluationApp() {
               </div>
             </div>
             <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-sky-900 leading-tight">{currentStaff.name}</h2>
-            <p className="text-xs sm:text-sm md:text-base text-sky-600 font-semibold">{currentStaff.position} (รหัส: {currentStaff.employeeId})</p>
+            <p className="text-xs sm:text-sm md:text-base text-sky-600 font-semibold">{currentStaff.position}</p>
           </div>
 
           {/* Form หัวข้อประเมิน */}
