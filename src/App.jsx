@@ -375,7 +375,7 @@ export default function StaffEvaluationApp() {
     printWindow.document.write(`
       <html>
         <head>
-          <title>รายงานสรุปผลการประเมิน - การประปา</title>
+          <title>รายงานสรุปผลการประเมิน - การประปาส่วนภูมิภาคสาขานครพนม</title>
           <style>
             body { font-family: 'Sarabun', sans-serif; padding: 20px; color: #0f172a; }
             h1 { font-size: 20px; margin-bottom: 5px; color: #0369a1; }
@@ -385,7 +385,7 @@ export default function StaffEvaluationApp() {
           </style>
         </head>
         <body>
-          <h1>💧 รายงานสรุปผลการประเมินความพึงพอใจ (การประปา)</h1>
+          <h1>💧 รายงานสรุปผลการประเมินความพึงพอใจ (การประปาส่วนภูมิภาคสาขานครพนม)</h1>
           <p>ช่วงเวลา: <b>${reportPeriod.toUpperCase()}</b> | พนักงาน: <b>${staffName}</b> | ผู้ประเมินทั้งหมด: <b>${reportStats.totalEvals} ครั้ง</b></p>
           
           <h2>📊 สรุปผลคะแนนแต่ละหัวข้อ</h2>
@@ -432,7 +432,7 @@ export default function StaffEvaluationApp() {
           <form onSubmit={handleLogin} className="space-y-4">
             <input 
               type="text" 
-              placeholder="กรอกรหัสพนักงาน (เช่น 12348)" 
+              placeholder="กรอกรหัสพนักงาน (เช่น 1234)" 
               value={inputEmpId}
               onChange={(e) => setInputEmpId(e.target.value)}
               className="w-full px-4 py-3.5 rounded-2xl border border-sky-200 bg-sky-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-center text-lg sm:text-xl font-semibold tracking-wider text-sky-900 placeholder-sky-300"
