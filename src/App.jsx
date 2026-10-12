@@ -1,20 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { db } from './firebaseConfig';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
-import pwaLogo from './assets/pwa.webp';
+import pwaLogo from './assets/pwa.WEBP';
 
 export default function StaffEvaluationApp() {
   const [step, setStep] = useState('login'); // 'login' | 'evaluating' | 'success' | 'admin-login' | 'admin-dashboard'
   const [activeAdminTab, setActiveAdminTab] = useState('reports'); // 'reports' | 'employees' | 'criteria'
   
-  // พนักงาน & ล็อกอิน
+  // พนักงาน & ล็อกอิน & ประเภทบริการ
   const [inputEmpId, setInputEmpId] = useState('');
+  const [serviceType, setServiceType] = useState('counter'); // 'counter' (เคาน์เตอร์รับบริการ) | 'other' (อื่นๆ)
   const [currentStaff, setCurrentStaff] = useState(null);
   const [staffList, setStaffList] = useState([]);
   const [criteriaList, setCriteriaList] = useState([]);
   
   // ผลประเมิน
   const [scores, setScores] = useState({});
+  const [counterOverallScore, setCounterOverallScore] = useState(null); // คะแนนรวมสำหรับเคาน์เตอร์
   const [comment, setComment] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -73,7 +75,6 @@ export default function StaffEvaluationApp() {
     try {
       const querySnapshot = await getDocs(collection(db, "evaluations"));
       const list = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      // เรียงจากใหม่ไปเก่า
       list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       setEvaluationsList(list);
     } catch (err) {
@@ -112,11 +113,18 @@ export default function StaffEvaluationApp() {
   // 2. ส่งผลการประเมิน
   const handleSubmitScore = async (e) => {
     e.preventDefault();
+
+    if (serviceType === 'counter' && !counterOverallScore) {
+      alert("กรุณาเลือกระดับความพึงพอใจก่อนยืนยันครับ");
+      return;
+    }
+
     try {
       await addDoc(collection(db, "evaluations"), {
         employeeId: currentStaff.employeeId,
         employeeName: currentStaff.name,
-        scores,
+        serviceType: serviceType,
+        scores: serviceType === 'counter' ? { overall: counterOverallScore } : scores,
         comment,
         createdAt: new Date().toISOString()
       });
@@ -124,6 +132,7 @@ export default function StaffEvaluationApp() {
       setTimeout(() => {
         setStep('evaluating');
         setScores({});
+        setCounterOverallScore(null);
         setComment('');
       }, 2000);
     } catch (error) {
@@ -285,16 +294,24 @@ export default function StaffEvaluationApp() {
 
   const filteredData = getFilteredEvaluations();
 
-  // คำนวณสถิติรายงานทั้งหมด
+  // คำนวณสถิติรายงานทั้งหมด (รวมทั้งรายงานเคาน์เตอร์แยกต่างหาก)
   const calculateReportStats = () => {
     const totalEvals = filteredData.length;
     
+    // สถิติเฉพาะเคาน์เตอร์รับบริการ
+    const counterReport = {
+      title: 'ความพึงพอใจในการรับบริการครั้งนี้',
+      scoresCount: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+      totalScoreSum: 0,
+      ratedCount: 0
+    };
+
     const criteriaStats = {};
     criteriaList.forEach(crit => {
       criteriaStats[crit.id] = {
         id: crit.id,
         title: crit.title,
-        scoresCount: { 1: 0, 2: 0, 3: 0, 4: 0 },
+        scoresCount: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
         totalScoreSum: 0,
         ratedCount: 0
       };
@@ -305,23 +322,33 @@ export default function StaffEvaluationApp() {
     filteredData.forEach(item => {
       const empId = item.employeeId;
       if (!staffScoreMap[empId]) {
-        staffScoreMap[empId] = { name: item.employeeName, totalScore: 0, count: 0, score1Count: 0, score4Count: 0 };
+        staffScoreMap[empId] = { name: item.employeeName, totalScore: 0, count: 0 };
       }
 
       if (item.scores) {
-        Object.entries(item.scores).forEach(([critId, score]) => {
-          if (criteriaStats[critId]) {
-            if (score >= 1 && score <= 4) {
-              criteriaStats[critId].scoresCount[score] += 1;
-              criteriaStats[critId].totalScoreSum += score;
-              criteriaStats[critId].ratedCount += 1;
-            }
+        if (item.serviceType === 'counter' || item.scores.overall) {
+          const score = item.scores.overall;
+          if (score >= 1 && score <= 5) {
+            counterReport.scoresCount[score] += 1;
+            counterReport.totalScoreSum += score;
+            counterReport.ratedCount += 1;
+
+            staffScoreMap[empId].totalScore += score;
+            staffScoreMap[empId].count += 1;
           }
-          staffScoreMap[empId].totalScore += score;
-          staffScoreMap[empId].count += 1;
-          if (score === 1) staffScoreMap[empId].score1Count += 1;
-          if (score === 4) staffScoreMap[empId].score4Count += 1;
-        });
+        } else {
+          Object.entries(item.scores).forEach(([critId, score]) => {
+            if (criteriaStats[critId]) {
+              if (score >= 1 && score <= 5) {
+                criteriaStats[critId].scoresCount[score] += 1;
+                criteriaStats[critId].totalScoreSum += score;
+                criteriaStats[critId].ratedCount += 1;
+              }
+            }
+            staffScoreMap[empId].totalScore += score;
+            staffScoreMap[empId].count += 1;
+          });
+        }
       }
     });
 
@@ -351,7 +378,7 @@ export default function StaffEvaluationApp() {
 
     const topStaff = staffRanking.length > 0 ? staffRanking[0] : null;
 
-    return { totalEvals, criteriaStats, topStaff, staffRanking, topCriteria, lowestCriteria };
+    return { totalEvals, counterReport, criteriaStats, topStaff, staffRanking, topCriteria, lowestCriteria };
   };
 
   const reportStats = calculateReportStats();
@@ -362,7 +389,6 @@ export default function StaffEvaluationApp() {
   const indexOfFirstRow = indexOfLastRow - rowsPerPage;
   const currentTableData = filteredData.slice(indexOfFirstRow, indexOfLastRow);
 
-  // เปลี่ยน Filter ช่วงเวลาแล้วให้รีเซ็ตหน้าตารางกลับไปหน้า 1
   const handlePeriodChange = (e) => {
     setReportPeriod(e.target.value);
     setCurrentPage(1);
@@ -376,17 +402,18 @@ export default function StaffEvaluationApp() {
   const exportToExcel = () => {
     let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
     csvContent += "=== ประวัติการประเมินย้อนหลัง ===\n";
-    csvContent += "วันที่-เวลา,รหัสพนักงาน,ชื่อพนักงาน,ข้อเสนอแนะ,คะแนนรวม\n";
+    csvContent += "วันที่-เวลา,ประเภทบริการ,รหัสพนักงาน,ชื่อพนักงาน,ข้อเสนอแนะ,คะแนนรวม\n";
 
     filteredData.forEach(item => {
       const dateStr = item.createdAt ? new Date(item.createdAt).toLocaleString('th-TH') : '-';
+      const serviceTypeName = item.serviceType === 'other' ? 'อื่นๆ' : 'เคาน์เตอร์รับบริการ';
       const totalScore = item.scores ? Object.values(item.scores).reduce((a, b) => a + b, 0) : 0;
       const cleanComment = (item.comment || '').replace(/"/g, '""');
-      csvContent += `"${dateStr}","${item.employeeId}","${item.employeeName}","${cleanComment}",${totalScore}\n`;
+      csvContent += `"${dateStr}","${serviceTypeName}","${item.employeeId}","${item.employeeName}","${cleanComment}",${totalScore}\n`;
     });
 
     csvContent += "\n=== สรุปอันดับคะแนนพนักงาน (เรียงจากมากไปน้อย) ===\n";
-    csvContent += "อันดับ,รหัสพนักงาน,ชื่อพนักงาน,จำนวนครั้งที่รับประเมิน,คะแนนเฉลี่ย (เต็ม 4.00)\n";
+    csvContent += "อันดับ,รหัสพนักงาน,ชื่อพนักงาน,จำนวนครั้งที่รับประเมิน,คะแนนเฉลี่ย (เต็ม 5.00)\n";
     
     reportStats.staffRanking.forEach((staff, idx) => {
       csvContent += `${idx + 1},"${staff.empId}","${staff.name}",${staff.count},${staff.avg.toFixed(2)}\n`;
@@ -409,42 +436,30 @@ export default function StaffEvaluationApp() {
     const printWindow = window.open('', '_blank', 'width=950,height=800');
     
     let criteriaSummaryHTML = '';
+
+    if (reportStats.counterReport.ratedCount > 0) {
+      const ratedC = reportStats.counterReport.ratedCount;
+      const cAvg = (reportStats.counterReport.totalScoreSum / ratedC).toFixed(2);
+      criteriaSummaryHTML += `
+        <div style="margin-bottom: 16px; background: #e0f2fe; border: 1px solid #7dd3fc; padding: 12px; border-radius: 10px;">
+          <b style="font-size: 14px; color: #0369a1;">🏢 เคาน์เตอร์รับบริการ: ${reportStats.counterReport.title}</b>
+          <span style="float: right; background: #0284c7; color: white; padding: 2px 8px; border-radius: 6px; font-weight: bold; font-size: 12px;">คะแนนเฉลี่ย: ${cAvg} / 5.00</span>
+          <div style="margin-top: 8px; font-size: 11px;">
+            ประเมินทั้งหมด: ${ratedC} ครั้ง
+          </div>
+        </div>
+      `;
+    }
+
     Object.values(reportStats.criteriaStats).forEach((stat, idx) => {
       const rated = stat.ratedCount || 1;
-      const p1 = ((stat.scoresCount[1] / rated) * 100).toFixed(1);
-      const p2 = ((stat.scoresCount[2] / rated) * 100).toFixed(1);
-      const p3 = ((stat.scoresCount[3] / rated) * 100).toFixed(1);
-      const p4 = ((stat.scoresCount[4] / rated) * 100).toFixed(1);
       const avg = (stat.totalScoreSum / rated).toFixed(2);
 
       criteriaSummaryHTML += `
-        <div style="margin-bottom: 16px; background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px; border-radius: 10px;">
-          <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-            <b style="font-size: 14px; color: #0369a1;">${idx + 1}. ${stat.title}</b>
-            <span style="background: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 6px; font-weight: bold; font-size: 12px;">คะแนนเฉลี่ย: ${avg} / 4.00</span>
-          </div>
-
-          <div style="margin-top: 8px; font-size: 11px;">
-            <div style="margin-bottom: 4px;">😡 ไม่พอใจเลย: ${stat.scoresCount[1]} คน (${p1}%)
-              <div style="background: #e2e8f0; height: 10px; border-radius: 5px; overflow: hidden; margin-top: 2px;">
-                <div style="background: #ef4444; width: ${p1}%; height: 100%;"></div>
-              </div>
-            </div>
-            <div style="margin-bottom: 4px;">😐 พอใจปานกลาง: ${stat.scoresCount[2]} คน (${p2}%)
-              <div style="background: #e2e8f0; height: 10px; border-radius: 5px; overflow: hidden; margin-top: 2px;">
-                <div style="background: #f59e0b; width: ${p2}%; height: 100%;"></div>
-              </div>
-            </div>
-            <div style="margin-bottom: 4px;">😊 พอใจมาก: ${stat.scoresCount[3]} คน (${p3}%)
-              <div style="background: #e2e8f0; height: 10px; border-radius: 5px; overflow: hidden; margin-top: 2px;">
-                <div style="background: #3b82f6; width: ${p3}%; height: 100%;"></div>
-              </div>
-            </div>
-            <div style="margin-bottom: 4px;">😍 พอใจมากที่สุด: ${stat.scoresCount[4]} คน (${p4}%)
-              <div style="background: #e2e8f0; height: 10px; border-radius: 5px; overflow: hidden; margin-top: 2px;">
-                <div style="background: #10b981; width: ${p4}%; height: 100%;"></div>
-              </div>
-            </div>
+        <div style="margin-bottom: 12px; background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px; border-radius: 10px;">
+          <div style="display: flex; justify-content: space-between;">
+            <b style="font-size: 13px; color: #0f172a;">${idx + 1}. ${stat.title}</b>
+            <span style="background: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 6px; font-weight: bold; font-size: 12px;">คะแนนเฉลี่ย: ${avg} / 5.00</span>
           </div>
         </div>
       `;
@@ -457,7 +472,7 @@ export default function StaffEvaluationApp() {
           <td style="padding: 6px; border-bottom: 1px solid #e2e8f0; text-align: center;"><b>อันดับ ${idx + 1}</b></td>
           <td style="padding: 6px; border-bottom: 1px solid #e2e8f0;">${staff.name} (${staff.empId})</td>
           <td style="padding: 6px; border-bottom: 1px solid #e2e8f0; text-align: center;">${staff.count} ครั้ง</td>
-          <td style="padding: 6px; border-bottom: 1px solid #e2e8f0; text-align: center; font-weight: bold; color: #0284c7;">${staff.avg.toFixed(2)} / 4.00</td>
+          <td style="padding: 6px; border-bottom: 1px solid #e2e8f0; text-align: center; font-weight: bold; color: #0284c7;">${staff.avg.toFixed(2)} / 5.00</td>
         </tr>
       `;
     });
@@ -471,7 +486,6 @@ export default function StaffEvaluationApp() {
             h1 { font-size: 18px; margin-bottom: 5px; color: #0369a1; }
             h2 { font-size: 14px; margin-top: 15px; color: #0284c7; border-bottom: 2px solid #bae6fd; padding-bottom: 4px; }
             p { font-size: 12px; color: #64748b; margin-bottom: 12px; }
-            .card { background: #f0fdf4; border: 1px solid #bbf7d0; padding: 10px; border-radius: 8px; margin-bottom: 8px; font-size: 12px; }
             table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
             th { background: #f1f5f9; padding: 8px; border-bottom: 2px solid #cbd5e1; text-align: left; }
           </style>
@@ -480,15 +494,7 @@ export default function StaffEvaluationApp() {
           <h1>💧 รายงานสรุปผลการประเมินความพึงพอใจ (การประปาส่วนภูมิภาคสาขานครพนม)</h1>
           <p>ช่วงเวลา: <b>${reportPeriod.toUpperCase()}</b> | พนักงาน: <b>${staffName}</b> | จำนวนผู้ประเมินรวม: <b>${reportStats.totalEvals} ราย</b></p>
           
-          <h2>📌 สรุปวิเคราะห์หัวข้อการประเมิน (สูงสุด & ต่ำสุด)</h2>
-          <div class="card">
-            💚 <b>หัวข้อที่ลูกค้าพึงพอใจมากที่สุด:</b> ${reportStats.topCriteria ? `${reportStats.topCriteria.title} (คะแนนเฉลี่ย ${reportStats.topCriteria.avg.toFixed(2)}/4.00)` : 'ไม่มีข้อมูล'}
-          </div>
-          <div class="card" style="background: #fff1f2; border-color: #fecdd3;">
-            💔 <b>หัวข้อที่ลูกค้าพึงพอใจน้อยที่สุด:</b> ${reportStats.lowestCriteria ? `${reportStats.lowestCriteria.title} (คะแนนเฉลี่ย ${reportStats.lowestCriteria.avg.toFixed(2)}/4.00)` : 'ไม่มีข้อมูล'}
-          </div>
-
-          <h2>🏆 สรุปจัดอันดับพนักงานเรียงตามคะแนนความพึงพอใจ (จากมากไปน้อย)</h2>
+          <h2>🏆 สรุปจัดอันดับพนักงานเรียงตามคะแนนความพึงพอใจ</h2>
           <table>
             <thead>
               <tr>
@@ -503,7 +509,7 @@ export default function StaffEvaluationApp() {
             </tbody>
           </table>
 
-          <h2>📊 สรุปผลคะแนนและกราฟแท่งแยกตามหัวข้อ</h2>
+          <h2>📊 สรุปผลคะแนนประเมินแยกตามประเภท/หัวข้อ</h2>
           ${criteriaSummaryHTML || '<p>ยังไม่มีข้อมูลหัวข้อประเมิน</p>'}
 
           <script>
@@ -515,11 +521,13 @@ export default function StaffEvaluationApp() {
     printWindow.document.close();
   };
 
-  const emotionLevels = [
-    { score: 1, emoji: '😡', label: 'ไม่พอใจเลย', sizeClass: 'text-2xl sm:text-3xl md:text-4xl' },
-    { score: 2, emoji: '😐', label: 'พอใจปานกลาง', sizeClass: 'text-3xl sm:text-4xl md:text-5xl' },
-    { score: 3, emoji: '😊', label: 'พอใจมาก', sizeClass: 'text-4xl sm:text-5xl md:text-6xl' },
-    { score: 4, emoji: '😍', label: 'พอใจมากที่สุด', sizeClass: 'text-5xl sm:text-6xl md:text-7xl' }
+  // 🌟 ไอคอนประเมิน 5 ระดับ (เรียงลำดับขนาดจากเล็กไปใหญ่)
+  const emotionLevels5 = [
+    { score: 1, emoji: '😡', label: 'พอใจน้อยมาก', sizeClass: 'text-xl sm:text-2xl md:text-3xl' },
+    { score: 2, emoji: '🙁', label: 'พอใจน้อย', sizeClass: 'text-2xl sm:text-3xl md:text-4xl' },
+    { score: 3, emoji: '😐', label: 'พอใจปานกลาง', sizeClass: 'text-3xl sm:text-4xl md:text-5xl' },
+    { score: 4, emoji: '😊', label: 'พอใจมาก', sizeClass: 'text-4xl sm:text-5xl md:text-6xl' },
+    { score: 5, emoji: '😍', label: 'พอใจมากที่สุด', sizeClass: 'text-5xl sm:text-6xl md:text-7xl' }
   ];
 
   const visibleCriteriaList = criteriaList.filter(crit => crit.active !== false);
@@ -540,18 +548,54 @@ export default function StaffEvaluationApp() {
           </div>
 
           <h2 className="text-xl sm:text-2xl font-bold text-sky-900 mb-2">ระบบประเมินความพึงพอใจการให้บริการ กปภ.สาขานครพนม</h2>
-          <p className="text-sm sm:text-base text-sky-600/70 mb-6">กรุณากรอกรหัสพนักงานเพื่อเริ่มรับการประเมิน</p>
+          <p className="text-sm sm:text-base text-sky-600/70 mb-4">เลือกประเภทบริการและกรอกรหัสพนักงาน</p>
           
           <form onSubmit={handleLogin} className="space-y-4">
-            <input 
-              type="text" 
-              placeholder="กรอกรหัสพนักงาน (เช่น 1234)" 
-              value={inputEmpId}
-              onChange={(e) => setInputEmpId(e.target.value)}
-              className="w-full px-4 py-3.5 rounded-2xl border border-sky-200 bg-sky-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-center text-lg sm:text-xl font-semibold tracking-wider text-sky-900 placeholder-sky-300"
-              required
-            />
+            {/* 🔘 เลือกประเภทจุดบริการ */}
+            <div className="space-y-1 text-left">
+              <label className="block text-xs font-bold text-sky-900">เลือกประเภทจุดบริการ:</label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setServiceType('counter')}
+                  className={`p-2.5 rounded-2xl border text-xs sm:text-sm font-bold transition flex items-center justify-center space-x-1 ${
+                    serviceType === 'counter' 
+                      ? 'bg-sky-600 text-white border-sky-600 shadow-md ring-2 ring-sky-300' 
+                      : 'bg-sky-50 text-sky-800 border-sky-200 hover:bg-sky-100'
+                  }`}
+                >
+                  <span>🏢</span>
+                  <span>1. เคาน์เตอร์รับบริการ</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setServiceType('other')}
+                  className={`p-2.5 rounded-2xl border text-xs sm:text-sm font-bold transition flex items-center justify-center space-x-1 ${
+                    serviceType === 'other' 
+                      ? 'bg-sky-600 text-white border-sky-600 shadow-md ring-2 ring-sky-300' 
+                      : 'bg-sky-50 text-sky-800 border-sky-200 hover:bg-sky-100'
+                  }`}
+                >
+                  <span>📌</span>
+                  <span>2. อื่นๆ</span>
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <input 
+                type="text" 
+                placeholder="กรอกรหัสพนักงาน (เช่น 1234)" 
+                value={inputEmpId}
+                onChange={(e) => setInputEmpId(e.target.value)}
+                className="w-full px-4 py-3.5 rounded-2xl border border-sky-200 bg-sky-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-center text-lg sm:text-xl font-semibold tracking-wider text-sky-900 placeholder-sky-300"
+                required
+              />
+            </div>
+
             {errorMsg && <p className="text-red-500 text-xs sm:text-sm font-medium">{errorMsg}</p>}
+            
             <button 
               type="submit"
               className="w-full bg-sky-600 text-white py-3.5 rounded-2xl font-semibold hover:bg-sky-700 transition shadow-lg shadow-sky-200 text-base sm:text-lg"
@@ -560,7 +604,7 @@ export default function StaffEvaluationApp() {
             </button>
           </form>
 
-          <div className="mt-8 pt-4 border-t border-sky-100">
+          <div className="mt-6 pt-4 border-t border-sky-100">
             <button
               onClick={() => { setStep('admin-login'); setErrorMsg(''); }}
               className="text-xs sm:text-sm text-sky-600 hover:text-sky-800 font-medium transition"
@@ -699,7 +743,6 @@ export default function StaffEvaluationApp() {
                   <p className="text-xs text-sky-100 font-medium">สถิติจำนวนผู้ทำรายการประเมิน ({reportPeriod === 'daily' ? 'ประจำวัน' : reportPeriod === 'monthly' ? 'ประจำเดือน' : reportPeriod === 'yearly' ? 'ประจำปี' : 'ทั้งหมด'})</p>
                   <h3 className="text-2xl sm:text-3xl font-extrabold mt-0.5">{reportStats.totalEvals} <span className="text-sm font-normal">ราย</span></h3>
                 </div>
-               
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -708,7 +751,7 @@ export default function StaffEvaluationApp() {
                   {reportStats.topCriteria ? (
                     <div className="text-xs sm:text-sm text-emerald-800 space-y-1">
                       <p><b>หัวข้อ:</b> {reportStats.topCriteria.title}</p>
-                      <p><b>คะแนนเฉลี่ย:</b> {reportStats.topCriteria.avg.toFixed(2)} / 4.00 คะแนน</p>
+                      <p><b>คะแนนเฉลี่ย:</b> {reportStats.topCriteria.avg.toFixed(2)} / 5.00 คะแนน</p>
                     </div>
                   ) : (
                     <p className="text-xs text-slate-400">ยังไม่มีข้อมูลการประเมิน</p>
@@ -720,12 +763,135 @@ export default function StaffEvaluationApp() {
                   {reportStats.lowestCriteria ? (
                     <div className="text-xs sm:text-sm text-rose-800 space-y-1">
                       <p><b>หัวข้อ:</b> {reportStats.lowestCriteria.title}</p>
-                      <p><b>คะแนนเฉลี่ย:</b> {reportStats.lowestCriteria.avg.toFixed(2)} / 4.00 คะแนน</p>
+                      <p><b>คะแนนเฉลี่ย:</b> {reportStats.lowestCriteria.avg.toFixed(2)} / 5.00 คะแนน</p>
                     </div>
                   ) : (
                     <p className="text-xs text-slate-400">ยังไม่มีข้อมูลการประเมิน</p>
                   )}
                 </div>
+              </div>
+
+              {/* 🏢 สรุปรายงานเฉพาะ "เคาน์เตอร์รับบริการ" (เพิ่มขึ้นมาต่างหาก) */}
+              <div className="bg-white p-4 sm:p-6 rounded-2xl border border-sky-300 shadow-sm space-y-4">
+                <h3 className="text-xs sm:text-sm font-bold text-sky-900 border-b border-sky-100 pb-2 flex items-center justify-between">
+                  <span>🏢 รายงานผลการประเมิน: เคาน์เตอร์รับบริการ</span>
+                  <span className="text-xs font-normal text-sky-600">หัวข้อประเมินหลัก</span>
+                </h3>
+
+                {reportStats.counterReport.ratedCount === 0 ? (
+                  <p className="text-xs text-slate-400 text-center py-2">ยังไม่มีข้อมูลการประเมินจากเคาน์เตอร์รับบริการ</p>
+                ) : (() => {
+                  const cReport = reportStats.counterReport;
+                  const rated = cReport.ratedCount || 1;
+                  const p1 = Number(((cReport.scoresCount[1] / rated) * 100).toFixed(1));
+                  const p2 = Number(((cReport.scoresCount[2] / rated) * 100).toFixed(1));
+                  const p3 = Number(((cReport.scoresCount[3] / rated) * 100).toFixed(1));
+                  const p4 = Number(((cReport.scoresCount[4] / rated) * 100).toFixed(1));
+                  const p5 = Number(((cReport.scoresCount[5] / rated) * 100).toFixed(1));
+                  const avg = (cReport.totalScoreSum / rated).toFixed(2);
+                  const isGraphOpen = openGraphId === 'counter_report_graph';
+
+                  return (
+                    <div className="bg-sky-50/70 p-4 rounded-xl border border-sky-200 space-y-3">
+                      <div className="flex justify-between items-center text-xs sm:text-sm flex-wrap gap-2">
+                        <span className="font-bold text-sky-950">📌 {cReport.title}</span>
+                        
+                        <div className="flex items-center space-x-2">
+                          <span className="bg-sky-600 text-white px-3 py-1 rounded-lg font-extrabold text-xs">
+                            คะแนนเฉลี่ย: {avg} / 5.00
+                          </span>
+                          
+                          <button 
+                            onClick={() => setOpenGraphId(isGraphOpen ? null : 'counter_report_graph')}
+                            className={`flex items-center space-x-1 px-3 py-1 rounded-lg text-xs font-bold transition shadow-xs ${
+                              isGraphOpen ? 'bg-sky-800 text-white' : 'bg-white text-sky-700 border border-sky-300 hover:bg-sky-100'
+                            }`}
+                          >
+                            <span>📊</span>
+                            <span>{isGraphOpen ? 'ซ่อนกราฟ' : 'ดูแสดงกราฟ'}</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-[11px] sm:text-xs">
+                        <div className="bg-white p-2 rounded-lg border border-red-100 text-red-700">
+                          😡 น้อยมาก: <b>{cReport.scoresCount[1]} คน</b> ({p1}%)
+                        </div>
+                        <div className="bg-white p-2 rounded-lg border border-orange-100 text-orange-700">
+                          🙁 น้อย: <b>{cReport.scoresCount[2]} คน</b> ({p2}%)
+                        </div>
+                        <div className="bg-white p-2 rounded-lg border border-amber-100 text-amber-700">
+                          😐 ปานกลาง: <b>{cReport.scoresCount[3]} คน</b> ({p3}%)
+                        </div>
+                        <div className="bg-white p-2 rounded-lg border border-sky-100 text-sky-700">
+                          😊 มาก: <b>{cReport.scoresCount[4]} คน</b> ({p4}%)
+                        </div>
+                        <div className="bg-white p-2 rounded-lg border border-emerald-100 text-emerald-700">
+                          😍 มากที่สุด: <b>{cReport.scoresCount[5]} คน</b> ({p5}%)
+                        </div>
+                      </div>
+
+                      {isGraphOpen && (
+                        <div className="bg-white p-4 rounded-xl border border-sky-200 mt-2 space-y-2.5">
+                          <p className="text-xs font-bold text-sky-900 border-b border-sky-100 pb-1">📈 กราฟแท่งแสดงระดับความพึงพอใจเคาน์เตอร์รับบริการ</p>
+                          
+                          <div className="space-y-2 text-xs">
+                            <div>
+                              <div className="flex justify-between mb-0.5 text-red-700 font-semibold">
+                                <span>😡 พอใจน้อยมาก</span>
+                                <span>{p1}% ({cReport.scoresCount[1]} คน)</span>
+                              </div>
+                              <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
+                                <div className="bg-red-500 h-3 rounded-full transition-all duration-500" style={{ width: `${p1}%` }}></div>
+                              </div>
+                            </div>
+
+                            <div>
+                              <div className="flex justify-between mb-0.5 text-orange-700 font-semibold">
+                                <span>🙁 พอใจน้อย</span>
+                                <span>{p2}% ({cReport.scoresCount[2]} คน)</span>
+                              </div>
+                              <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
+                                <div className="bg-orange-500 h-3 rounded-full transition-all duration-500" style={{ width: `${p2}%` }}></div>
+                              </div>
+                            </div>
+
+                            <div>
+                              <div className="flex justify-between mb-0.5 text-amber-700 font-semibold">
+                                <span>😐 พอใจปานกลาง</span>
+                                <span>{p3}% ({cReport.scoresCount[3]} คน)</span>
+                              </div>
+                              <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
+                                <div className="bg-amber-500 h-3 rounded-full transition-all duration-500" style={{ width: `${p3}%` }}></div>
+                              </div>
+                            </div>
+
+                            <div>
+                              <div className="flex justify-between mb-0.5 text-sky-700 font-semibold">
+                                <span>😊 พอใจมาก</span>
+                                <span>{p4}% ({cReport.scoresCount[4]} คน)</span>
+                              </div>
+                              <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
+                                <div className="bg-sky-500 h-3 rounded-full transition-all duration-500" style={{ width: `${p4}%` }}></div>
+                              </div>
+                            </div>
+
+                            <div>
+                              <div className="flex justify-between mb-0.5 text-emerald-700 font-semibold">
+                                <span>😍 พอใจมากที่สุด</span>
+                                <span>{p5}% ({cReport.scoresCount[5]} คน)</span>
+                              </div>
+                              <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
+                                <div className="bg-emerald-500 h-3 rounded-full transition-all duration-500" style={{ width: `${p5}%` }}></div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                    </div>
+                  );
+                })()}
               </div>
 
               <div className="bg-white p-4 sm:p-6 rounded-2xl border border-sky-200 shadow-sm space-y-3">
@@ -749,7 +915,7 @@ export default function StaffEvaluationApp() {
                           </div>
                         </div>
                         <span className="text-xs font-extrabold text-sky-800 bg-white px-2 py-1 rounded-lg border border-sky-200 shadow-2xs">
-                          {staff.avg.toFixed(2)} / 4.0
+                          {staff.avg.toFixed(2)} / 5.0
                         </span>
                       </div>
                     ))}
@@ -757,8 +923,9 @@ export default function StaffEvaluationApp() {
                 )}
               </div>
 
+              {/* สรุปกราฟสถิติหัวข้ออื่นๆ */}
               <div className="bg-white p-4 sm:p-6 rounded-2xl border border-sky-200 shadow-sm space-y-4">
-                <h3 className="text-xs sm:text-sm font-bold text-sky-900 border-b border-sky-100 pb-2">📊 สรุปผลการประเมินแยกตามหัวข้อ (คะแนนและเปอร์เซ็นต์)</h3>
+                <h3 className="text-xs sm:text-sm font-bold text-sky-900 border-b border-sky-100 pb-2">📊 สรุปผลการประเมินแยกตามหัวข้ออื่นๆ (คะแนนและเปอร์เซ็นต์)</h3>
                 
                 {Object.keys(reportStats.criteriaStats).length === 0 ? (
                   <p className="text-xs text-slate-400 text-center py-4">ยังไม่มีข้อมูลหัวข้อการประเมิน</p>
@@ -770,6 +937,7 @@ export default function StaffEvaluationApp() {
                       const p2 = Number(((stat.scoresCount[2] / rated) * 100).toFixed(1));
                       const p3 = Number(((stat.scoresCount[3] / rated) * 100).toFixed(1));
                       const p4 = Number(((stat.scoresCount[4] / rated) * 100).toFixed(1));
+                      const p5 = Number(((stat.scoresCount[5] / rated) * 100).toFixed(1));
                       const avg = (stat.totalScoreSum / rated).toFixed(2);
                       const isGraphOpen = openGraphId === stat.id;
 
@@ -780,7 +948,7 @@ export default function StaffEvaluationApp() {
                             
                             <div className="flex items-center space-x-2">
                               <span className="bg-sky-200 text-sky-800 px-2.5 py-1 rounded-md font-bold">
-                                คะแนนเฉลี่ย: {avg} / 4.00
+                                คะแนนเฉลี่ย: {avg} / 5.00
                               </span>
                               
                               <button 
@@ -795,18 +963,21 @@ export default function StaffEvaluationApp() {
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-[11px] sm:text-xs">
+                          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-[11px] sm:text-xs">
                             <div className="bg-white p-2 rounded-lg border border-red-100 text-red-700">
-                              😡 ไม่พอใจเลย: <b>{stat.scoresCount[1]} คน</b> ({p1}%)
+                              😡 น้อยมาก: <b>{stat.scoresCount[1]} คน</b> ({p1}%)
+                            </div>
+                            <div className="bg-white p-2 rounded-lg border border-orange-100 text-orange-700">
+                              🙁 น้อย: <b>{stat.scoresCount[2]} คน</b> ({p2}%)
                             </div>
                             <div className="bg-white p-2 rounded-lg border border-amber-100 text-amber-700">
-                              😐 พอใจปานกลาง: <b>{stat.scoresCount[2]} คน</b> ({p2}%)
+                              😐 ปานกลาง: <b>{stat.scoresCount[3]} คน</b> ({p3}%)
                             </div>
-                            <div className="bg-white p-2 rounded-lg border border-blue-100 text-blue-700">
-                              😊 พอใจมาก: <b>{stat.scoresCount[3]} คน</b> ({p3}%)
+                            <div className="bg-white p-2 rounded-lg border border-sky-100 text-sky-700">
+                              😊 มาก: <b>{stat.scoresCount[4]} คน</b> ({p4}%)
                             </div>
                             <div className="bg-white p-2 rounded-lg border border-emerald-100 text-emerald-700">
-                              😍 พอใจมากที่สุด: <b>{stat.scoresCount[4]} คน</b> ({p4}%)
+                              😍 มากที่สุด: <b>{stat.scoresCount[5]} คน</b> ({p5}%)
                             </div>
                           </div>
 
@@ -817,41 +988,51 @@ export default function StaffEvaluationApp() {
                               <div className="space-y-2 text-xs">
                                 <div>
                                   <div className="flex justify-between mb-1 text-red-700 font-semibold">
-                                    <span>😡 ไม่พอใจเลย</span>
+                                    <span>😡 พอใจน้อยมาก</span>
                                     <span>{p1}% ({stat.scoresCount[1]} คน)</span>
                                   </div>
-                                  <div className="w-full bg-slate-100 rounded-full h-3.5 overflow-hidden">
-                                    <div className="bg-red-500 h-3.5 rounded-full transition-all duration-500" style={{ width: `${p1}%` }}></div>
+                                  <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
+                                    <div className="bg-red-500 h-3 rounded-full transition-all duration-500" style={{ width: `${p1}%` }}></div>
+                                  </div>
+                                </div>
+
+                                <div>
+                                  <div className="flex justify-between mb-1 text-orange-700 font-semibold">
+                                    <span>🙁 พอใจน้อย</span>
+                                    <span>{p2}% ({stat.scoresCount[2]} คน)</span>
+                                  </div>
+                                  <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
+                                    <div className="bg-orange-500 h-3 rounded-full transition-all duration-500" style={{ width: `${p2}%` }}></div>
                                   </div>
                                 </div>
 
                                 <div>
                                   <div className="flex justify-between mb-1 text-amber-700 font-semibold">
                                     <span>😐 พอใจปานกลาง</span>
-                                    <span>{p2}% ({stat.scoresCount[2]} คน)</span>
+                                    <span>{p3}% ({stat.scoresCount[3]} คน)</span>
                                   </div>
-                                  <div className="w-full bg-slate-100 rounded-full h-3.5 overflow-hidden">
-                                    <div className="bg-amber-500 h-3.5 rounded-full transition-all duration-500" style={{ width: `${p2}%` }}></div>
+                                  <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
+                                    <div className="bg-amber-500 h-3 rounded-full transition-all duration-500" style={{ width: `${p3}%` }}></div>
                                   </div>
                                 </div>
 
                                 <div>
-                                  <div className="flex justify-between mb-1 text-blue-700 font-semibold">
+                                  <div className="flex justify-between mb-1 text-sky-700 font-semibold">
                                     <span>😊 พอใจมาก</span>
-                                    <span>{p3}% ({stat.scoresCount[3]} คน)</span>
+                                    <span>{p4}% ({stat.scoresCount[4]} คน)</span>
                                   </div>
-                                  <div className="w-full bg-slate-100 rounded-full h-3.5 overflow-hidden">
-                                    <div className="bg-blue-500 h-3.5 rounded-full transition-all duration-500" style={{ width: `${p3}%` }}></div>
+                                  <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
+                                    <div className="bg-sky-500 h-3 rounded-full transition-all duration-500" style={{ width: `${p4}%` }}></div>
                                   </div>
                                 </div>
 
                                 <div>
                                   <div className="flex justify-between mb-1 text-emerald-700 font-semibold">
                                     <span>😍 พอใจมากที่สุด</span>
-                                    <span>{p4}% ({stat.scoresCount[4]} คน)</span>
+                                    <span>{p5}% ({stat.scoresCount[5]} คน)</span>
                                   </div>
-                                  <div className="w-full bg-slate-100 rounded-full h-3.5 overflow-hidden">
-                                    <div className="bg-emerald-500 h-3.5 rounded-full transition-all duration-500" style={{ width: `${p4}%` }}></div>
+                                  <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
+                                    <div className="bg-emerald-500 h-3 rounded-full transition-all duration-500" style={{ width: `${p5}%` }}></div>
                                   </div>
                                 </div>
                               </div>
@@ -865,7 +1046,7 @@ export default function StaffEvaluationApp() {
                 )}
               </div>
 
-              {/* 📋 ประวัติการประเมินย้อนหลัง (แสดงครั้งละ 10 แถว + ปุ่มเปลี่ยนหน้า) */}
+              {/* ประวัติการประเมินย้อนหลัง (10 แถว + Pagination) */}
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
                   <h3 className="text-xs sm:text-sm font-bold text-sky-900">📋 ประวัติการประเมินย้อนหลัง (แสดงหน้าละ 10 รายการ)</h3>
@@ -877,6 +1058,7 @@ export default function StaffEvaluationApp() {
                     <thead>
                       <tr className="bg-sky-100/70 text-sky-900 border-b border-sky-200">
                         <th className="p-3">วันที่-เวลา</th>
+                        <th className="p-3">ประเภทบริการ</th>
                         <th className="p-3">รหัสพนักงาน</th>
                         <th className="p-3">ชื่อพนักงาน</th>
                         <th className="p-3">ข้อเสนอแนะ</th>
@@ -885,13 +1067,20 @@ export default function StaffEvaluationApp() {
                     <tbody className="divide-y divide-sky-100">
                       {currentTableData.length === 0 ? (
                         <tr>
-                          <td colSpan="4" className="text-center p-8 text-sky-400">ไม่พบข้อมูลการประเมินตามเงื่อนไขที่เลือก</td>
+                          <td colSpan="5" className="text-center p-8 text-sky-400">ไม่พบข้อมูลการประเมินตามเงื่อนไขที่เลือก</td>
                         </tr>
                       ) : (
                         currentTableData.map((item, idx) => (
                           <tr key={item.id || idx} className="hover:bg-sky-50/50">
                             <td className="p-3 text-sky-900">
                               {item.createdAt ? new Date(item.createdAt).toLocaleString('th-TH') : '-'}
+                            </td>
+                            <td className="p-3 font-semibold">
+                              <span className={`px-2 py-0.5 rounded-md text-[11px] ${
+                                item.serviceType === 'other' ? 'bg-purple-100 text-purple-700' : 'bg-sky-100 text-sky-800'
+                              }`}>
+                                {item.serviceType === 'other' ? '📌 อื่นๆ' : '🏢 เคาน์เตอร์'}
+                              </span>
                             </td>
                             <td className="p-3 font-semibold text-sky-800">{item.employeeId}</td>
                             <td className="p-3 font-medium text-sky-900">{item.employeeName}</td>
@@ -903,7 +1092,6 @@ export default function StaffEvaluationApp() {
                   </table>
                 </div>
 
-                {/* 🧭 ปุ่มควบคุม Pagination เปลี่ยนหน้า */}
                 {filteredData.length > 0 && (
                   <div className="flex items-center justify-between pt-2 px-1">
                     <span className="text-xs text-sky-700 font-medium">
@@ -1134,6 +1322,7 @@ export default function StaffEvaluationApp() {
               setInputEmpId('');
               setCurrentStaff(null);
               setScores({});
+              setCounterOverallScore(null);
               setComment('');
             }}
             className="absolute top-3 right-3 text-xs text-sky-600 hover:text-red-500 border border-sky-200 bg-sky-50 px-3 py-1.5 rounded-xl transition font-semibold z-20"
@@ -1146,15 +1335,18 @@ export default function StaffEvaluationApp() {
               <img 
                 src={currentStaff.photoUrl} 
                 alt={currentStaff.name} 
-                className="w-36 h-36 sm:w-44 sm:h-44 md:w-52 md:h-52 rounded-full object-cover shadow-xl border-4 border-sky-300 p-1 bg-white mx-auto"
+                className="w-32 h-32 sm:w-40 sm:h-40 md:w-48 md:h-48 rounded-full object-cover shadow-xl border-4 border-sky-300 p-1 bg-white mx-auto"
               />
             </div>
             <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-sky-900 leading-tight">{currentStaff.name}</h2>
             <p className="text-xs sm:text-sm md:text-base text-sky-600 font-semibold">{currentStaff.position}</p>
+            <span className="mt-1 text-[11px] sm:text-xs bg-sky-100 text-sky-800 font-semibold px-3 py-0.5 rounded-full">
+              จุดบริการ: {serviceType === 'counter' ? '🏢 เคาน์เตอร์รับบริการ' : '📌 อื่นๆ'}
+            </span>
           </div>
 
           <form onSubmit={handleSubmitScore} className="flex flex-col justify-between flex-1 space-y-2 overflow-hidden">
-            <div className="space-y-2 overflow-y-auto pr-1 flex-1 flex flex-col justify-around">
+            <div className="space-y-3 overflow-y-auto pr-1 flex-1 flex flex-col justify-around">
               
               <div className="text-center py-1">
                 <h3 className="text-base sm:text-lg md:text-xl font-bold text-sky-800 bg-sky-100/70 py-2 px-4 rounded-2xl shadow-2xs inline-block">
@@ -1162,43 +1354,80 @@ export default function StaffEvaluationApp() {
                 </h3>
               </div>
 
-              {visibleCriteriaList.length === 0 ? (
-                <p className="text-center text-slate-400 py-6 text-sm">ไม่มีหัวข้อการประเมินในขณะนี้</p>
-              ) : (
-                visibleCriteriaList.map((crit, index) => (
-                  <div key={crit.id} className="bg-sky-50/70 border border-sky-100 p-2 sm:p-3 rounded-2xl shadow-2xs">
-                    <p className="font-bold text-sky-900 mb-1.5 text-center text-sm sm:text-base md:text-lg">
-                      {index + 1}. {crit.title}
-                    </p>
-                    
-                    <div className="grid grid-cols-4 gap-2 sm:gap-3">
-                      {emotionLevels.map((item) => {
-                        const isSelected = scores[crit.id] === item.score;
-                        return (
-                          <button
-                            type="button"
-                            key={item.score}
-                            onClick={() => setScores({ ...scores, [crit.id]: item.score })}
-                            className={`flex flex-col items-center justify-center p-2 sm:p-3 rounded-2xl cursor-pointer transition-all duration-200 transform ${
-                              isSelected 
-                                ? 'bg-sky-200 scale-105 shadow-md border-2 border-sky-500 ring-2 ring-sky-300' 
-                                : 'bg-white hover:bg-sky-100/70 opacity-70 hover:opacity-100 border border-sky-100 hover:scale-105'
-                            }`}
-                          >
-                            <span className={`${item.sizeClass} mb-1 drop-shadow-xs`}>
-                              {item.emoji}
-                            </span>
-                            <span className={`text-[10px] sm:text-xs font-bold text-center truncate w-full ${
-                              isSelected ? 'text-sky-950 font-extrabold' : 'text-sky-800'
-                            }`}>
-                              {item.label}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
+              {/* 🏢 กรณีเลือก "เคาน์เตอร์รับบริการ": ซ่อนหัวข้อประเมิน ให้กดเลือก 5 ระดับภาพรวม */}
+              {serviceType === 'counter' ? (
+                <div className="bg-sky-50/80 border border-sky-200 p-4 sm:p-6 rounded-3xl shadow-sm space-y-3">
+                  <p className="text-sm sm:text-base md:text-lg font-bold text-sky-900 text-center">
+                    ความพึงพอใจในการรับบริการครั้งนี้
+                  </p>
+                  
+                  <div className="grid grid-cols-5 gap-2 sm:gap-3 items-center">
+                    {emotionLevels5.map((item) => {
+                      const isSelected = counterOverallScore === item.score;
+                      return (
+                        <button
+                          type="button"
+                          key={item.score}
+                          onClick={() => setCounterOverallScore(item.score)}
+                          className={`flex flex-col items-center justify-center p-2.5 sm:p-4 rounded-2xl cursor-pointer transition-all duration-200 border transform ${
+                            isSelected 
+                              ? 'bg-sky-200 scale-105 shadow-md border-2 border-sky-600 ring-2 ring-sky-300' 
+                              : 'bg-white hover:bg-sky-100/70 opacity-80 hover:opacity-100 border-sky-100 hover:scale-105'
+                          }`}
+                        >
+                          <span className={`${item.sizeClass} mb-1 drop-shadow-xs`}>
+                            {item.emoji}
+                          </span>
+                          <span className={`text-[10px] sm:text-xs font-bold text-center truncate w-full ${
+                            isSelected ? 'text-sky-950 font-extrabold' : 'text-sky-800'
+                          }`}>
+                            {item.label}
+                          </span>
+                        </button>
+                      );
+                    })}
                   </div>
-                ))
+                </div>
+              ) : (
+                /* 📌 กรณีเลือก "อื่นๆ": แสดงหัวข้อประเมินปกติ พร้อมไอคอน 5 ระดับไล่ขนาดเล็กไปใหญ่ */
+                visibleCriteriaList.length === 0 ? (
+                  <p className="text-center text-slate-400 py-6 text-sm">ไม่มีหัวข้อการประเมินในขณะนี้</p>
+                ) : (
+                  visibleCriteriaList.map((crit, index) => (
+                    <div key={crit.id} className="bg-sky-50/70 border border-sky-100 p-2.5 sm:p-3 rounded-2xl shadow-2xs">
+                      <p className="font-bold text-sky-900 mb-2 text-center text-xs sm:text-sm md:text-base">
+                        {index + 1}. {crit.title}
+                      </p>
+                      
+                      <div className="grid grid-cols-5 gap-1.5 sm:gap-2 items-center">
+                        {emotionLevels5.map((item) => {
+                          const isSelected = scores[crit.id] === item.score;
+                          return (
+                            <button
+                              type="button"
+                              key={item.score}
+                              onClick={() => setScores({ ...scores, [crit.id]: item.score })}
+                              className={`flex flex-col items-center justify-center p-2 sm:p-3 rounded-2xl cursor-pointer transition-all duration-200 border transform ${
+                                isSelected 
+                                  ? 'bg-sky-200 scale-105 shadow-md border-2 border-sky-600 ring-2 ring-sky-300' 
+                                  : 'bg-white hover:bg-sky-100/70 opacity-75 hover:opacity-100 border-sky-100 hover:scale-105'
+                              }`}
+                            >
+                              <span className={`${item.sizeClass} mb-1 drop-shadow-xs`}>
+                                {item.emoji}
+                              </span>
+                              <span className={`text-[9px] sm:text-[11px] font-bold text-center truncate w-full ${
+                                isSelected ? 'text-sky-950 font-extrabold' : 'text-sky-800'
+                              }`}>
+                                {item.label}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))
+                )
               )}
 
               <div>
