@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { db } from './firebaseConfig';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
-import pwaLogo from './assets/pwa.webp';
+import pwaLogo from './assets/pwa.WEBP';
 
 export default function StaffEvaluationApp() {
   const [step, setStep] = useState('login'); // 'login' | 'evaluating' | 'success' | 'admin-login' | 'admin-dashboard'
@@ -523,11 +523,11 @@ export default function StaffEvaluationApp() {
 
   // 🌟 ไอคอนประเมิน 5 ระดับ (เรียงลำดับขนาดจากเล็กไปใหญ่)
   const emotionLevels5 = [
-    { score: 1, emoji: '😡', label: 'น้อยมาก', sizeClass: 'text-xl sm:text-2xl md:text-3xl' },
-    { score: 2, emoji: '🙁', label: 'น้อย', sizeClass: 'text-2xl sm:text-3xl md:text-4xl' },
-    { score: 3, emoji: '😐', label: 'ปานกลาง', sizeClass: 'text-3xl sm:text-4xl md:text-5xl' },
-    { score: 4, emoji: '😊', label: 'มาก', sizeClass: 'text-4xl sm:text-5xl md:text-6xl' },
-    { score: 5, emoji: '😍', label: 'มากที่สุด', sizeClass: 'text-5xl sm:text-6xl md:text-7xl' }
+    { score: 1, emoji: '😡', label: 'พอใจน้อยมาก', sizeClass: 'text-xl sm:text-2xl md:text-3xl' },
+    { score: 2, emoji: '🙁', label: 'พอใจน้อย', sizeClass: 'text-2xl sm:text-3xl md:text-4xl' },
+    { score: 3, emoji: '😐', label: 'พอใจปานกลาง', sizeClass: 'text-3xl sm:text-4xl md:text-5xl' },
+    { score: 4, emoji: '😊', label: 'พอใจมาก', sizeClass: 'text-4xl sm:text-5xl md:text-6xl' },
+    { score: 5, emoji: '😍', label: 'พอใจมากที่สุด', sizeClass: 'text-5xl sm:text-6xl md:text-7xl' }
   ];
 
   const visibleCriteriaList = criteriaList.filter(crit => crit.active !== false);
@@ -771,7 +771,7 @@ export default function StaffEvaluationApp() {
                 </div>
               </div>
 
-              {/* 🏢 สรุปรายงานเฉพาะ "เคาน์เตอร์รับบริการ" (เพิ่มขึ้นมาต่างหาก) */}
+              {/* 🏢 สรุปรายงานเฉพาะ "เคาน์เตอร์รับบริการ" */}
               <div className="bg-white p-4 sm:p-6 rounded-2xl border border-sky-300 shadow-sm space-y-4">
                 <h3 className="text-xs sm:text-sm font-bold text-sky-900 border-b border-sky-100 pb-2 flex items-center justify-between">
                   <span>🏢 รายงานผลการประเมิน: เคาน์เตอร์รับบริการ</span>
@@ -1378,7 +1378,7 @@ export default function StaffEvaluationApp() {
                           <span className={`${item.sizeClass} mb-1 drop-shadow-xs`}>
                             {item.emoji}
                           </span>
-                          <span className={`text-[10px] sm:text-xs font-bold text-center truncate w-full ${
+                          <span className={`text-[9px] sm:text-xs font-bold text-center leading-tight whitespace-pre-line break-words w-full ${
                             isSelected ? 'text-sky-950 font-extrabold' : 'text-sky-800'
                           }`}>
                             {item.label}
@@ -1389,7 +1389,7 @@ export default function StaffEvaluationApp() {
                   </div>
                 </div>
               ) : (
-                /* 📌 กรณีเลือก "อื่นๆ": แสดงหัวข้อประเมินปกติ พร้อมไอคอน 5 ระดับไล่ขนาดเล็กไปใหญ่ */
+                /* 📌 กรณีเลือก "อื่นๆ": แสดงหัวข้อประเมินปกติ พร้อมไอคอน 5 ระดับ */
                 visibleCriteriaList.length === 0 ? (
                   <p className="text-center text-slate-400 py-6 text-sm">ไม่มีหัวข้อการประเมินในขณะนี้</p>
                 ) : (
@@ -1416,7 +1416,7 @@ export default function StaffEvaluationApp() {
                               <span className={`${item.sizeClass} mb-1 drop-shadow-xs`}>
                                 {item.emoji}
                               </span>
-                              <span className={`text-[9px] sm:text-[11px] font-bold text-center truncate w-full ${
+                              <span className={`text-[8px] sm:text-[11px] font-bold text-center leading-tight whitespace-pre-line break-words w-full ${
                                 isSelected ? 'text-sky-950 font-extrabold' : 'text-sky-800'
                               }`}>
                                 {item.label}
