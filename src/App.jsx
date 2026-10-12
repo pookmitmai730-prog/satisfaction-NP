@@ -523,11 +523,11 @@ export default function StaffEvaluationApp() {
 
   // 🌟 ไอคอนประเมิน 5 ระดับ (เรียงลำดับขนาดจากเล็กไปใหญ่)
   const emotionLevels5 = [
-    { score: 1, emoji: '😡', label: 'พอใจน้อยมาก', sizeClass: 'text-xl sm:text-2xl md:text-3xl' },
-    { score: 2, emoji: '🙁', label: 'พอใจน้อย', sizeClass: 'text-2xl sm:text-3xl md:text-4xl' },
-    { score: 3, emoji: '😐', label: 'พอใจปานกลาง', sizeClass: 'text-3xl sm:text-4xl md:text-5xl' },
-    { score: 4, emoji: '😊', label: 'พอใจมาก', sizeClass: 'text-4xl sm:text-5xl md:text-6xl' },
-    { score: 5, emoji: '😍', label: 'พอใจมากที่สุด', sizeClass: 'text-5xl sm:text-6xl md:text-7xl' }
+    { score: 1, emoji: '😡', label: 'น้อยมาก', sizeClass: 'text-xl sm:text-2xl md:text-3xl' },
+    { score: 2, emoji: '🙁', label: 'น้อย', sizeClass: 'text-2xl sm:text-3xl md:text-4xl' },
+    { score: 3, emoji: '😐', label: 'ปานกลาง', sizeClass: 'text-3xl sm:text-4xl md:text-5xl' },
+    { score: 4, emoji: '😊', label: 'มาก', sizeClass: 'text-4xl sm:text-5xl md:text-6xl' },
+    { score: 5, emoji: '😍', label: 'มากที่สุด', sizeClass: 'text-5xl sm:text-6xl md:text-7xl' }
   ];
 
   const visibleCriteriaList = criteriaList.filter(crit => crit.active !== false);
