@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { db } from './firebaseConfig';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
-import pwaLogo from './assets/pwa.webp';
+import pwaLogo from './assets/pwa.WEBP';
 
 // กำหนดค่าคงที่ของสถานะพนักงานทั้ง 4 แบบ เพื่อใช้อ้างอิงทั่วทั้งระบบและรองรับการกรอง/แสดงผลในอนาคต
 const STAFF_STATUS_OPTIONS = [
@@ -412,7 +412,7 @@ export default function StaffEvaluationApp() {
 
     // สถิติเฉพาะเคาน์เตอร์รับบริการ
     const counterReport = {
-      title: 'ความพึงพอใจในการรับบริการครั้งนี้',
+      title: 'ระดับความพึงพอใจ',
       scoresCount: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
       totalScoreSum: 0,
       ratedCount: 0
@@ -1714,9 +1714,9 @@ export default function StaffEvaluationApp() {
         </div>
       )}
 
-      {/* ⭐ 4. หน้าจอประเมินความพึงพอใจสำหรับลูกค้า */}
+      {/* ⭐ 4. หน้าจอประเมินความพึงพอใจสำหรับลูกค้า (ปรับชื่อ-ตำแหน่งอยู่บนรูป + ขยายรูปใหญ่ประมาณครึ่งจอ + ข้อความ "ระดับความพึงพอใจ") */}
       {step === 'evaluating' && currentStaff && (
-        <div className="bg-white w-full max-w-4xl min-h-[85vh] rounded-3xl shadow-xl border border-sky-100 flex flex-col justify-between p-4 sm:p-6 md:p-8 relative">
+        <div className="bg-gradient-to-b from-sky-50/80 via-white to-sky-50/50 w-full max-w-5xl min-h-[92vh] rounded-3xl shadow-2xl border border-sky-100 flex flex-col justify-between p-4 sm:p-6 md:p-8 relative">
           <button
             type="button"
             onClick={() => {
@@ -1733,32 +1733,37 @@ export default function StaffEvaluationApp() {
               setComment('');
               setIsSubmitting(false);
             }}
-            className="absolute top-4 right-4 text-xs text-sky-600 hover:text-red-500 border border-sky-200 bg-sky-50 px-3 py-1.5 rounded-xl transition font-semibold z-20"
+            className="absolute top-4 right-4 text-xs text-sky-700 hover:text-red-600 border border-sky-200 bg-white/90 hover:bg-red-50 px-3.5 py-1.5 rounded-xl transition font-semibold shadow-xs z-20"
           >
-            ย้อนกลับ / ออกจากระบบ
+            ย้อนกลับ
           </button>
 
-          <div className="flex flex-col items-center justify-center border-b border-sky-100 pb-3 mb-3 flex-shrink-0 text-center">
-            <div className="mb-2">
-              <img
-                src={
-                  currentStaff.photoUrl ||
-                  "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500&h=500&fit=crop&crop=faces"
-                }
-                alt={currentStaff.name}
-                className="w-28 h-28 sm:w-36 sm:h-36 rounded-full object-cover shadow-xl border-4 border-sky-300 p-1 bg-white mx-auto"
-              />
+          {/* ส่วนข้อมูลผู้รับการประเมิน: ชื่อและตำแหน่งอยู่ด้านบน + รูปภาพใหญ่ประมาณครึ่งจอ */}
+          <div className="flex flex-col items-center justify-center border-b border-sky-100 pb-4 mb-4 flex-shrink-0 text-center">
+            <div className="mb-3 space-y-1">
+              <span className="inline-block text-xs bg-sky-100 text-sky-800 font-bold px-3.5 py-1 rounded-full shadow-2xs">
+                {serviceType === 'counter' ? '🏢 เคาน์เตอร์รับบริการ' : '📌 จุดบริการอื่นๆ'}
+              </span>
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-sky-950 tracking-tight leading-tight">
+                {currentStaff.name}
+              </h2>
+              <p className="text-sm sm:text-base md:text-lg text-sky-700 font-semibold">
+                {currentStaff.position || 'เจ้าหน้าที่บริการ'}
+              </p>
             </div>
-            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-sky-900 leading-tight">
-              {currentStaff.name}
-            </h2>
-            <p className="text-xs sm:text-sm md:text-base text-sky-600 font-semibold">
-              {currentStaff.position}
-            </p>
-            <span className="mt-1 text-[11px] sm:text-xs bg-sky-100 text-sky-800 font-semibold px-3 py-0.5 rounded-full">
-              จุดบริการ:{' '}
-              {serviceType === 'counter' ? '🏢 เคาน์เตอร์รับบริการ' : '📌 อื่นๆ'}
-            </span>
+
+            <div className="w-full flex justify-center">
+              <div className="h-[36vh] sm:h-[42vh] md:h-[46vh] aspect-[4/3] sm:aspect-square max-w-[92vw] rounded-3xl overflow-hidden shadow-2xl border-4 border-white ring-4 ring-sky-200/80 bg-sky-100">
+                <img
+                  src={
+                    currentStaff.photoUrl ||
+                    "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500&h=500&fit=crop&crop=faces"
+                  }
+                  alt={currentStaff.name}
+                  className="w-full h-full object-cover object-top"
+                />
+              </div>
+            </div>
           </div>
 
           <form
@@ -1766,17 +1771,17 @@ export default function StaffEvaluationApp() {
             className="flex flex-col justify-between flex-1 space-y-4"
           >
             <div className="space-y-4 flex-1 flex flex-col justify-around">
-              <div className="text-center py-1">
-                <h3 className="text-base sm:text-lg md:text-xl font-bold text-sky-800 bg-sky-100/70 py-2 px-4 rounded-2xl shadow-2xs inline-block">
-                  💧 โปรดประเมินความพึงพอใจในการรับบริการครั้งนี้ 💧
-                </h3>
+              <div className="text-center">
+                <span className="text-base sm:text-lg md:text-xl font-bold text-sky-900 bg-sky-100/90 border border-sky-200/80 py-2 px-5 rounded-2xl shadow-2xs inline-block">
+                  💧 ระดับความพึงพอใจ 💧
+                </span>
               </div>
 
-              {/* 🏢 กรณีเลือก "เคาน์เตอร์รับบริการ": ซ่อนหัวข้อประเมิน ให้กดเลือก 5 ระดับภาพรวม */}
+              {/* 🏢 กรณีเลือก "เคาน์เตอร์รับบริการ": กดเลือก 5 ระดับภาพรวม */}
               {serviceType === 'counter' ? (
-                <div className="bg-sky-50/80 border border-sky-200 p-4 sm:p-6 rounded-3xl shadow-sm space-y-3">
+                <div className="bg-white/90 border border-sky-200/90 p-4 sm:p-5 rounded-3xl shadow-sm space-y-3">
                   <p className="text-sm sm:text-base md:text-lg font-bold text-sky-900 text-center">
-                    ความพึงพอใจในการรับบริการครั้งนี้
+                    ระดับความพึงพอใจ
                   </p>
 
                   <div className="grid grid-cols-5 gap-2 sm:gap-3 items-center">
@@ -1790,14 +1795,14 @@ export default function StaffEvaluationApp() {
                           className={`flex flex-col items-center justify-center p-2.5 sm:p-4 rounded-2xl cursor-pointer transition-all duration-200 border transform ${
                             isSelected
                               ? 'bg-sky-200 scale-105 shadow-md border-2 border-sky-600 ring-2 ring-sky-300'
-                              : 'bg-white hover:bg-sky-100/70 opacity-80 hover:opacity-100 border-sky-100 hover:scale-105'
+                              : 'bg-sky-50/40 hover:bg-sky-100/70 opacity-85 hover:opacity-100 border-sky-100 hover:scale-105'
                           }`}
                         >
                           <span className={`${item.sizeClass} mb-1 drop-shadow-xs`}>
                             {item.emoji}
                           </span>
                           <span
-                            className={`text-[9px] sm:text-xs font-bold text-center leading-tight whitespace-pre-line break-words w-full ${
+                            className={`text-[10px] sm:text-xs font-bold text-center leading-tight whitespace-pre-line break-words w-full ${
                               isSelected ? 'text-sky-950 font-extrabold' : 'text-sky-800'
                             }`}
                           >
@@ -1818,7 +1823,7 @@ export default function StaffEvaluationApp() {
                   visibleCriteriaList.map((crit, index) => (
                     <div
                       key={crit.id}
-                      className="bg-sky-50/70 border border-sky-100 p-2.5 sm:p-3 rounded-2xl shadow-2xs"
+                      className="bg-white/90 border border-sky-200/80 p-3 sm:p-4 rounded-2xl shadow-2xs"
                     >
                       <p className="font-bold text-sky-900 mb-2 text-center text-xs sm:text-sm md:text-base">
                         {index + 1}. {crit.title}
@@ -1835,14 +1840,14 @@ export default function StaffEvaluationApp() {
                               className={`flex flex-col items-center justify-center p-2 sm:p-3 rounded-2xl cursor-pointer transition-all duration-200 border transform ${
                                 isSelected
                                   ? 'bg-sky-200 scale-105 shadow-md border-2 border-sky-600 ring-2 ring-sky-300'
-                                  : 'bg-white hover:bg-sky-100/70 opacity-75 hover:opacity-100 border-sky-100 hover:scale-105'
+                                  : 'bg-sky-50/40 hover:bg-sky-100/70 opacity-80 hover:opacity-100 border-sky-100 hover:scale-105'
                               }`}
                             >
                               <span className={`${item.sizeClass} mb-1 drop-shadow-xs`}>
                                 {item.emoji}
                               </span>
                               <span
-                                className={`text-[8px] sm:text-[11px] font-bold text-center leading-tight whitespace-pre-line break-words w-full ${
+                                className={`text-[9px] sm:text-xs font-bold text-center leading-tight whitespace-pre-line break-words w-full ${
                                   isSelected ? 'text-sky-950 font-extrabold' : 'text-sky-800'
                                 }`}
                               >
@@ -1863,7 +1868,7 @@ export default function StaffEvaluationApp() {
                   placeholder="ข้อเสนอแนะเพิ่มเติม (ถ้ามี)..."
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl border border-sky-200 bg-sky-50/30 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-xs sm:text-sm text-sky-900 placeholder-sky-300"
+                  className="w-full px-4 py-2.5 rounded-xl border border-sky-200 bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-xs sm:text-sm text-sky-900 placeholder-sky-300"
                 />
               </div>
             </div>
