@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { db } from './firebaseConfig';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
-import pwaLogo from './assets/pwa.webp';
+import pwaLogo from './assets/pwa.WEBP';
 
 // กำหนดค่าคงที่ของสถานะพนักงานทั้ง 4 แบบ เพื่อใช้อ้างอิงทั่วทั้งระบบและรองรับการกรอง/แสดงผลในอนาคต
 const STAFF_STATUS_OPTIONS = [
@@ -18,51 +18,52 @@ const getStatusInfo = (statusValue) => {
 const THAI_FONT_STACK = "'Noto Sans Thai', 'Sarabun', 'Prompt', sans-serif";
 
 export default function StaffEvaluationApp() {
-  const [step, setStep] = useState('login'); // 'login' | 'evaluating' | 'success' | 'admin-login' | 'admin-dashboard'[cite: 4]
-  const [activeAdminTab, setActiveAdminTab] = useState('reports'); // 'reports' | 'employees' | 'criteria'[cite: 4]
+  const [step, setStep] = useState('login'); // 'login' | 'evaluating' | 'success' | 'admin-login' | 'admin-dashboard'
+  const [activeAdminTab, setActiveAdminTab] = useState('reports'); // 'reports' | 'employees' | 'criteria'
 
-  // พนักงาน & ล็อกอิน & ประเภทบริการ[cite: 4]
-  const [inputEmpId, setInputEmpId] = useState(''); //[cite: 4]
-  const [serviceType, setServiceType] = useState('counter'); // 'counter' (เคาน์เตอร์รับบริการ) | 'other' (อื่นๆ)[cite: 4]
-  const [currentStaff, setCurrentStaff] = useState(null); //[cite: 4]
-  const [staffList, setStaffList] = useState([]); //[cite: 4]
-  const [criteriaList, setCriteriaList] = useState([]); //[cite: 4]
+  // พนักงาน & ล็อกอิน & ประเภทบริการ
+  const [inputEmpId, setInputEmpId] = useState('');
+  const [serviceType, setServiceType] = useState('counter'); // 'counter' (เคาน์เตอร์รับบริการ) | 'other' (อื่นๆ)
+  const [currentStaff, setCurrentStaff] = useState(null);
+  const [staffList, setStaffList] = useState([]);
+  const [criteriaList, setCriteriaList] = useState([]);
 
   // สถานะผู้ใช้งานระบบ Admin ที่กำลังล็อกอินอยู่
   const [currentAdminUser, setCurrentAdminUser] = useState(null);
 
-  // ผลประเมิน[cite: 4]
-  const [scores, setScores] = useState({}); //[cite: 4]
-  const [counterOverallScore, setCounterOverallScore] = useState(null); // คะแนนรวมสำหรับเคาน์เตอร์[cite: 4]
-  const [comment, setComment] = useState(''); //[cite: 4]
-  const [errorMsg, setErrorMsg] = useState(''); //[cite: 4]
+  // ผลประเมิน
+  const [scores, setScores] = useState({});
+  const [counterOverallScore, setCounterOverallScore] = useState(null); // คะแนนรวมสำหรับเคาน์เตอร์
+  const [comment, setComment] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Admin States[cite: 4]
-  const [adminPin, setAdminPin] = useState(''); //[cite: 4]
-  const [evaluationsList, setEvaluationsList] = useState([]); //[cite: 4]
-  const [openGraphId, setOpenGraphId] = useState(null); //[cite: 4]
+  // Admin States
+  const [adminPin, setAdminPin] = useState('');
+  const [evaluationsList, setEvaluationsList] = useState([]);
+  const [openGraphId, setOpenGraphId] = useState(null);
 
-  // Pagination State (แบ่งหน้าตารางครั้งละ 10 แถว)[cite: 4]
-  const [currentPage, setCurrentPage] = useState(1); //[cite: 4]
-  const rowsPerPage = 10; //[cite: 4]
+  // Pagination State (แบ่งหน้าตารางครั้งละ 10 แถว)
+  const [currentPage, setCurrentPage] = useState(1);
+  const rowsPerPage = 10;
 
   // Form States: เพิ่ม/แก้ไขพนักงาน (เพิ่ม status 4 สถานะ + 4 สายงาน + Role + รูปภาพ)
-  const [editingEmpDocId, setEditingEmpDocId] = useState(null); //[cite: 4]
-  const [newEmpId, setNewEmpId] = useState(''); //[cite: 4]
-  const [newEmpName, setNewEmpName] = useState(''); //[cite: 4]
-  const [newEmpPosition, setNewEmpPosition] = useState(''); //[cite: 4]
-  const [newEmpPhoto, setNewEmpPhoto] = useState(''); //[cite: 4]
+  const [editingEmpDocId, setEditingEmpDocId] = useState(null);
+  const [newEmpId, setNewEmpId] = useState('');
+  const [newEmpName, setNewEmpName] = useState('');
+  const [newEmpPosition, setNewEmpPosition] = useState('');
+  const [newEmpPhoto, setNewEmpPhoto] = useState('');
   const [newEmpStatus, setNewEmpStatus] = useState('COUNTER'); // COUNTER | OTHER_SERVICE | SUPERVISOR | MANAGER
   const [newEmpDepartment, setNewEmpDepartment] = useState('SERVICE'); // SERVICE, ADMIN, PRODUCTION, REVENUE
   const [newEmpRole, setNewEmpRole] = useState('STAFF'); // STAFF, SERVICE_HEAD, ADMIN_HEAD, PRODUCTION_HEAD, REVENUE_HEAD, MANAGER, REPORT_OFFICER
 
-  // Form States: เพิ่ม/แก้ไขหัวข้อการประเมิน[cite: 4]
-  const [editingCriteriaId, setEditingCriteriaId] = useState(null); //[cite: 4]
-  const [newCriteriaTitle, setNewCriteriaTitle] = useState(''); //[cite: 4]
+  // Form States: เพิ่ม/แก้ไขหัวข้อการประเมิน
+  const [editingCriteriaId, setEditingCriteriaId] = useState(null);
+  const [newCriteriaTitle, setNewCriteriaTitle] = useState('');
 
-  // Report Filter States[cite: 4]
-  const [reportPeriod, setReportPeriod] = useState('daily'); // 'daily' | 'monthly' | 'yearly' | 'all'[cite: 4]
-  const [selectedStaffFilter, setSelectedStaffFilter] = useState('all'); //[cite: 4]
+  // Report Filter States
+  const [reportPeriod, setReportPeriod] = useState('daily'); // 'daily' | 'monthly' | 'yearly' | 'all'
+  const [selectedStaffFilter, setSelectedStaffFilter] = useState('all');
 
   // โหลดฟอนต์ภาษาไทยจาก Google Fonts และข้อมูลเบื้องต้น
   useEffect(() => {
@@ -76,57 +77,63 @@ export default function StaffEvaluationApp() {
       document.head.appendChild(link);
     }
 
-    fetchStaffs(); //[cite: 4]
-    fetchCriteria(); //[cite: 4]
+    fetchStaffs();
+    fetchCriteria();
   }, []);
 
   const fetchStaffs = async () => {
     try {
-      const querySnapshot = await getDocs(collection(db, "employees")); //[cite: 4]
+      const querySnapshot = await getDocs(collection(db, "employees"));
       const list = querySnapshot.docs.map((docItem) => {
         const data = docItem.data();
         return {
           id: docItem.id,
           ...data,
-          status: data.status || 'COUNTER'
+          status: data.status || 'COUNTER',
+          department: data.department || 'SERVICE',
+          role: data.role || 'STAFF'
         };
       });
-      setStaffList(list); //[cite: 4]
+      setStaffList(list);
     } catch (err) {
-      console.error("Error fetching employees:", err); //[cite: 4]
+      console.error("Error fetching employees:", err);
     }
   };
 
   const fetchCriteria = async () => {
     try {
-      const querySnapshot = await getDocs(collection(db, "criteria")); //[cite: 4]
-      const list = querySnapshot.docs.map((docItem) => ({ id: docItem.id, ...docItem.data() })); //[cite: 4]
-      list.sort((a, b) => (a.order || 0) - (b.order || 0)); //[cite: 4]
-      setCriteriaList(list); //[cite: 4]
+      const querySnapshot = await getDocs(collection(db, "criteria"));
+      const list = querySnapshot.docs.map((docItem) => ({ id: docItem.id, ...docItem.data() }));
+      list.sort((a, b) => (a.order || 0) - (b.order || 0));
+      setCriteriaList(list);
     } catch (err) {
-      console.error("Error fetching criteria:", err); //[cite: 4]
+      console.error("Error fetching criteria:", err);
     }
   };
 
   const fetchEvaluations = async () => {
     try {
-      const querySnapshot = await getDocs(collection(db, "evaluations")); //[cite: 4]
-      const list = querySnapshot.docs.map((docItem) => ({ id: docItem.id, ...docItem.data() })); //[cite: 4]
-      list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)); //[cite: 4]
-      setEvaluationsList(list); //[cite: 4]
+      const querySnapshot = await getDocs(collection(db, "evaluations"));
+      const list = querySnapshot.docs.map((docItem) => ({ id: docItem.id, ...docItem.data() }));
+      list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      setEvaluationsList(list);
     } catch (err) {
-      console.error("Error fetching evaluations:", err); //[cite: 4]
+      console.error("Error fetching evaluations:", err);
     }
   };
 
   const requestFullScreen = () => {
-    const elem = document.documentElement; //[cite: 4]
-    if (elem.requestFullscreen) {
-      elem.requestFullscreen().catch((err) => console.log(err)); //[cite: 4]
-    } else if (elem.webkitRequestFullscreen) {
-      elem.webkitRequestFullscreen(); //[cite: 4]
-    } else if (elem.msRequestFullscreen) {
-      elem.msRequestFullscreen(); //[cite: 4]
+    try {
+      const elem = document.documentElement;
+      if (elem.requestFullscreen) {
+        elem.requestFullscreen().catch(() => {});
+      } else if (elem.webkitRequestFullscreen) {
+        elem.webkitRequestFullscreen();
+      } else if (elem.msRequestFullscreen) {
+        elem.msRequestFullscreen();
+      }
+    } catch {
+      // ข้ามหากเบราว์เซอร์ไม่อนุญาต
     }
   };
 
@@ -142,57 +149,75 @@ export default function StaffEvaluationApp() {
     setCounterOverallScore(null);
     setScores({});
     setComment('');
+    setIsSubmitting(false);
     setStep('evaluating');
     requestFullScreen();
   };
 
-  // เข้าสู่ระบบพนักงานด้วยรหัสพนักงาน (รองรับกรณีเรียกใช้งาน)
+  // เข้าสู่ระบบพนักงานด้วยรหัสพนักงาน
   const handleLogin = (e) => {
-    e.preventDefault(); //[cite: 4]
-    setErrorMsg(''); //[cite: 4]
+    e.preventDefault();
+    setErrorMsg('');
     const foundStaff = staffList.find(
-      (staff) => String(staff.employeeId).trim() === String(inputEmpId).trim() //[cite: 4]
+      (staff) => String(staff.employeeId).trim() === String(inputEmpId).trim()
     );
 
     if (foundStaff) {
-      setCurrentStaff(foundStaff); //[cite: 4]
-      setStep('evaluating'); //[cite: 4]
-      requestFullScreen(); //[cite: 4]
+      setCurrentStaff(foundStaff);
+      setStep('evaluating');
+      requestFullScreen();
     } else {
-      setErrorMsg('ไม่พบรหัสพนักงานนี้ในระบบ กรุณาตรวจสอบอีกครั้ง'); //[cite: 4]
+      setErrorMsg('ไม่พบรหัสพนักงานนี้ในระบบ กรุณาตรวจสอบอีกครั้ง');
     }
   };
 
-  // ส่งผลการประเมิน[cite: 4]
+  // ส่งผลการประเมิน (ป้องกันค่า undefined ที่ทำให้ Firestore บันทึกไม่ได้)
   const handleSubmitScore = async (e) => {
-    e.preventDefault(); //[cite: 4]
+    if (e) e.preventDefault();
+    if (isSubmitting) return;
 
     if (serviceType === 'counter' && !counterOverallScore) {
-      alert("กรุณาเลือกระดับความพึงพอใจก่อนยืนยันครับ"); //[cite: 4]
-      return; //[cite: 4]
+      alert("กรุณาเลือกระดับความพึงพอใจก่อนยืนยันครับ");
+      return;
     }
 
+    if (serviceType !== 'counter') {
+      const activeCrit = criteriaList.filter((c) => c.active !== false);
+      if (activeCrit.length > 0 && Object.keys(scores).length < activeCrit.length) {
+        alert("กรุณาประเมินให้ครบทุกหัวข้อก่อนยืนยันครับ");
+        return;
+      }
+    }
+
+    setIsSubmitting(true);
+
     try {
-      await addDoc(collection(db, "evaluations"), {
-        employeeId: currentStaff ? currentStaff.employeeId : 'COUNTER',
-        employeeName: currentStaff ? currentStaff.name : 'เคาน์เตอร์บริการ',
-        staffStatus: currentStaff ? (currentStaff.status || 'COUNTER') : 'COUNTER',
-        department: currentStaff ? currentStaff.department : 'SERVICE',
-        serviceType: serviceType, //[cite: 4]
-        scores: serviceType === 'counter' ? { overall: counterOverallScore } : scores, //[cite: 4]
-        comment, //[cite: 4]
-        createdAt: new Date().toISOString() //[cite: 4]
-      });
-      setStep('success'); //[cite: 4]
+      const payload = {
+        employeeId: currentStaff?.employeeId ?? 'COUNTER',
+        employeeName: currentStaff?.name || 'เคาน์เตอร์บริการ',
+        staffStatus: currentStaff?.status || 'COUNTER',
+        department: currentStaff?.department || 'SERVICE',
+        serviceType: serviceType || 'counter',
+        scores: serviceType === 'counter' ? { overall: Number(counterOverallScore) } : scores,
+        comment: comment || '',
+        createdAt: new Date().toISOString()
+      };
+
+      await addDoc(collection(db, "evaluations"), payload);
+
+      setStep('success');
       setTimeout(() => {
         setStep('login');
         setCurrentStaff(null);
-        setScores({}); //[cite: 4]
-        setCounterOverallScore(null); //[cite: 4]
-        setComment(''); //[cite: 4]
-      }, 2000); //[cite: 4]
+        setScores({});
+        setCounterOverallScore(null);
+        setComment('');
+        setIsSubmitting(false);
+      }, 2000);
     } catch (error) {
-      console.error("Error submitting score: ", error); //[cite: 4]
+      console.error("Error submitting score: ", error);
+      alert("ไม่สามารถบันทึกผลการประเมินได้ กรุณาลองใหม่อีกครั้ง: " + (error?.message || ""));
+      setIsSubmitting(false);
     }
   };
 
@@ -230,62 +255,62 @@ export default function StaffEvaluationApp() {
   };
 
   const handleImageChange = (e) => {
-    const file = e.target.files[0]; //[cite: 4]
+    const file = e.target.files[0];
     if (file) {
-      const reader = new FileReader(); //[cite: 4]
+      const reader = new FileReader();
       reader.onloadend = () => {
-        setNewEmpPhoto(reader.result); //[cite: 4]
+        setNewEmpPhoto(reader.result);
       };
-      reader.readAsDataURL(file); //[cite: 4]
+      reader.readAsDataURL(file);
     }
   };
 
   const handleSaveEmployee = async (e) => {
-    e.preventDefault(); //[cite: 4]
-    if (!newEmpId || !newEmpName) return; //[cite: 4]
+    e.preventDefault();
+    if (!newEmpId || !newEmpName) return;
 
     const empData = {
-      employeeId: isNaN(Number(newEmpId)) ? newEmpId : Number(newEmpId), //[cite: 4]
-      name: newEmpName, //[cite: 4]
-      position: newEmpPosition || "เจ้าหน้าที่บริการ", //[cite: 4]
-      status: newEmpStatus, // COUNTER | OTHER_SERVICE | SUPERVISOR | MANAGER
-      department: newEmpDepartment, // SERVICE, ADMIN, PRODUCTION, REVENUE
-      role: newEmpRole, // STAFF, SERVICE_HEAD, ADMIN_HEAD, PRODUCTION_HEAD, REVENUE_HEAD, MANAGER, REPORT_OFFICER
+      employeeId: isNaN(Number(newEmpId)) ? newEmpId : Number(newEmpId),
+      name: newEmpName,
+      position: newEmpPosition || "เจ้าหน้าที่บริการ",
+      status: newEmpStatus || 'COUNTER', // COUNTER | OTHER_SERVICE | SUPERVISOR | MANAGER
+      department: newEmpDepartment || 'SERVICE', // SERVICE, ADMIN, PRODUCTION, REVENUE
+      role: newEmpRole || 'STAFF', // STAFF, SERVICE_HEAD, ADMIN_HEAD, PRODUCTION_HEAD, REVENUE_HEAD, MANAGER, REPORT_OFFICER
       photoUrl:
         newEmpPhoto ||
-        "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500&h=500&fit=crop&crop=faces" //[cite: 4]
+        "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500&h=500&fit=crop&crop=faces"
     };
 
     try {
       if (editingEmpDocId) {
-        await updateDoc(doc(db, "employees", editingEmpDocId), empData); //[cite: 4]
+        await updateDoc(doc(db, "employees", editingEmpDocId), empData);
       } else {
-        await addDoc(collection(db, "employees"), empData); //[cite: 4]
+        await addDoc(collection(db, "employees"), empData);
       }
-      resetEmpForm(); //[cite: 4]
-      fetchStaffs(); //[cite: 4]
+      resetEmpForm();
+      fetchStaffs();
     } catch (err) {
-      console.error("Error saving employee:", err); //[cite: 4]
+      console.error("Error saving employee:", err);
     }
   };
 
   const handleStartEditEmployee = (emp) => {
-    setEditingEmpDocId(emp.id); //[cite: 4]
-    setNewEmpId(emp.employeeId); //[cite: 4]
-    setNewEmpName(emp.name); //[cite: 4]
-    setNewEmpPosition(emp.position || ''); //[cite: 4]
-    setNewEmpPhoto(emp.photoUrl || ''); //[cite: 4]
+    setEditingEmpDocId(emp.id);
+    setNewEmpId(emp.employeeId);
+    setNewEmpName(emp.name);
+    setNewEmpPosition(emp.position || '');
+    setNewEmpPhoto(emp.photoUrl || '');
     setNewEmpStatus(emp.status || 'COUNTER');
     setNewEmpDepartment(emp.department || 'SERVICE');
     setNewEmpRole(emp.role || 'STAFF');
   };
 
   const resetEmpForm = () => {
-    setEditingEmpDocId(null); //[cite: 4]
-    setNewEmpId(''); //[cite: 4]
-    setNewEmpName(''); //[cite: 4]
-    setNewEmpPosition(''); //[cite: 4]
-    setNewEmpPhoto(''); //[cite: 4]
+    setEditingEmpDocId(null);
+    setNewEmpId('');
+    setNewEmpName('');
+    setNewEmpPosition('');
+    setNewEmpPhoto('');
     setNewEmpStatus('COUNTER');
     setNewEmpDepartment('SERVICE');
     setNewEmpRole('STAFF');
@@ -294,146 +319,146 @@ export default function StaffEvaluationApp() {
   const handleDeleteEmployee = async (id) => {
     if (window.confirm("คุณต้องการลบข้อมูลพนักงานคนนี้ใช่หรือไม่?")) {
       try {
-        await deleteDoc(doc(db, "employees", id)); //[cite: 4]
-        if (editingEmpDocId === id) resetEmpForm(); //[cite: 4]
-        fetchStaffs(); //[cite: 4]
+        await deleteDoc(doc(db, "employees", id));
+        if (editingEmpDocId === id) resetEmpForm();
+        fetchStaffs();
       } catch (err) {
-        console.error("Error deleting employee:", err); //[cite: 4]
+        console.error("Error deleting employee:", err);
       }
     }
   };
 
   const handleSaveCriteria = async (e) => {
-    e.preventDefault(); //[cite: 4]
-    if (!newCriteriaTitle.trim()) return; //[cite: 4]
+    e.preventDefault();
+    if (!newCriteriaTitle.trim()) return;
 
     try {
       if (editingCriteriaId) {
         await updateDoc(doc(db, "criteria", editingCriteriaId), {
-          title: newCriteriaTitle //[cite: 4]
+          title: newCriteriaTitle
         });
       } else {
         await addDoc(collection(db, "criteria"), {
-          title: newCriteriaTitle, //[cite: 4]
-          active: true, //[cite: 4]
-          order: criteriaList.length + 1 //[cite: 4]
+          title: newCriteriaTitle,
+          active: true,
+          order: criteriaList.length + 1
         });
       }
-      resetCriteriaForm(); //[cite: 4]
-      fetchCriteria(); //[cite: 4]
+      resetCriteriaForm();
+      fetchCriteria();
     } catch (err) {
-      console.error("Error saving criteria:", err); //[cite: 4]
+      console.error("Error saving criteria:", err);
     }
   };
 
   const handleToggleCriteriaActive = async (crit) => {
-    const currentActiveState = crit.active !== false; //[cite: 4]
+    const currentActiveState = crit.active !== false;
     try {
       await updateDoc(doc(db, "criteria", crit.id), {
-        active: !currentActiveState //[cite: 4]
+        active: !currentActiveState
       });
-      fetchCriteria(); //[cite: 4]
+      fetchCriteria();
     } catch (err) {
-      console.error("Error toggling criteria active state:", err); //[cite: 4]
+      console.error("Error toggling criteria active state:", err);
     }
   };
 
   const handleStartEditCriteria = (crit) => {
-    setEditingCriteriaId(crit.id); //[cite: 4]
-    setNewCriteriaTitle(crit.title); //[cite: 4]
+    setEditingCriteriaId(crit.id);
+    setNewCriteriaTitle(crit.title);
   };
 
   const resetCriteriaForm = () => {
-    setEditingCriteriaId(null); //[cite: 4]
-    setNewCriteriaTitle(''); //[cite: 4]
+    setEditingCriteriaId(null);
+    setNewCriteriaTitle('');
   };
 
   const handleDeleteCriteria = async (id) => {
     if (window.confirm("คุณต้องการลบหัวข้อการประเมินนี้ใช่หรือไม่?")) {
       try {
-        await deleteDoc(doc(db, "criteria", id)); //[cite: 4]
-        if (editingCriteriaId === id) resetCriteriaForm(); //[cite: 4]
-        fetchCriteria(); //[cite: 4]
+        await deleteDoc(doc(db, "criteria", id));
+        if (editingCriteriaId === id) resetCriteriaForm();
+        fetchCriteria();
       } catch (err) {
-        console.error("Error deleting criteria:", err); //[cite: 4]
+        console.error("Error deleting criteria:", err);
       }
     }
   };
 
   const getFilteredEvaluations = () => {
-    const now = new Date(); //[cite: 4]
+    const now = new Date();
     return evaluationsList.filter((item) => {
       if (selectedStaffFilter !== 'all' && String(item.employeeId) !== String(selectedStaffFilter)) {
-        return false; //[cite: 4]
+        return false;
       }
-      if (!item.createdAt) return true; //[cite: 4]
-      const itemDate = new Date(item.createdAt); //[cite: 4]
+      if (!item.createdAt) return true;
+      const itemDate = new Date(item.createdAt);
       if (reportPeriod === 'daily') {
-        return itemDate.toDateString() === now.toDateString(); //[cite: 4]
+        return itemDate.toDateString() === now.toDateString();
       } else if (reportPeriod === 'monthly') {
-        return itemDate.getMonth() === now.getMonth() && itemDate.getFullYear() === now.getFullYear(); //[cite: 4]
+        return itemDate.getMonth() === now.getMonth() && itemDate.getFullYear() === now.getFullYear();
       } else if (reportPeriod === 'yearly') {
-        return itemDate.getFullYear() === now.getFullYear(); //[cite: 4]
+        return itemDate.getFullYear() === now.getFullYear();
       }
-      return true; //[cite: 4]
+      return true;
     });
   };
 
-  const filteredData = getFilteredEvaluations(); //[cite: 4]
+  const filteredData = getFilteredEvaluations();
 
-  // คำนวณสถิติรายงานทั้งหมด (รวมทั้งรายงานเคาน์เตอร์แยกต่างหาก)[cite: 4]
+  // คำนวณสถิติรายงานทั้งหมด (รวมทั้งรายงานเคาน์เตอร์แยกต่างหาก)
   const calculateReportStats = () => {
-    const totalEvals = filteredData.length; //[cite: 4]
+    const totalEvals = filteredData.length;
 
-    // สถิติเฉพาะเคาน์เตอร์รับบริการ[cite: 4]
+    // สถิติเฉพาะเคาน์เตอร์รับบริการ
     const counterReport = {
-      title: 'ความพึงพอใจในการรับบริการครั้งนี้', //[cite: 4]
-      scoresCount: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }, //[cite: 4]
-      totalScoreSum: 0, //[cite: 4]
-      ratedCount: 0 //[cite: 4]
+      title: 'ความพึงพอใจในการรับบริการครั้งนี้',
+      scoresCount: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+      totalScoreSum: 0,
+      ratedCount: 0
     };
 
-    const criteriaStats = {}; //[cite: 4]
+    const criteriaStats = {};
     criteriaList.forEach((crit) => {
       criteriaStats[crit.id] = {
-        id: crit.id, //[cite: 4]
-        title: crit.title, //[cite: 4]
-        scoresCount: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }, //[cite: 4]
-        totalScoreSum: 0, //[cite: 4]
-        ratedCount: 0 //[cite: 4]
+        id: crit.id,
+        title: crit.title,
+        scoresCount: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+        totalScoreSum: 0,
+        ratedCount: 0
       };
     });
 
-    const staffScoreMap = {}; //[cite: 4]
+    const staffScoreMap = {};
 
     filteredData.forEach((item) => {
-      const empId = item.employeeId; //[cite: 4]
+      const empId = item.employeeId;
       if (!staffScoreMap[empId]) {
-        staffScoreMap[empId] = { name: item.employeeName, totalScore: 0, count: 0 }; //[cite: 4]
+        staffScoreMap[empId] = { name: item.employeeName, totalScore: 0, count: 0 };
       }
 
       if (item.scores) {
         if (item.serviceType === 'counter' || item.scores.overall) {
-          const score = item.scores.overall; //[cite: 4]
+          const score = item.scores.overall;
           if (score >= 1 && score <= 5) {
-            counterReport.scoresCount[score] += 1; //[cite: 4]
-            counterReport.totalScoreSum += score; //[cite: 4]
-            counterReport.ratedCount += 1; //[cite: 4]
+            counterReport.scoresCount[score] += 1;
+            counterReport.totalScoreSum += score;
+            counterReport.ratedCount += 1;
 
-            staffScoreMap[empId].totalScore += score; //[cite: 4]
-            staffScoreMap[empId].count += 1; //[cite: 4]
+            staffScoreMap[empId].totalScore += score;
+            staffScoreMap[empId].count += 1;
           }
         } else {
           Object.entries(item.scores).forEach(([critId, score]) => {
             if (criteriaStats[critId]) {
               if (score >= 1 && score <= 5) {
-                criteriaStats[critId].scoresCount[score] += 1; //[cite: 4]
-                criteriaStats[critId].totalScoreSum += score; //[cite: 4]
-                criteriaStats[critId].ratedCount += 1; //[cite: 4]
+                criteriaStats[critId].scoresCount[score] += 1;
+                criteriaStats[critId].totalScoreSum += score;
+                criteriaStats[critId].ratedCount += 1;
               }
             }
-            staffScoreMap[empId].totalScore += score; //[cite: 4]
-            staffScoreMap[empId].count += 1; //[cite: 4]
+            staffScoreMap[empId].totalScore += score;
+            staffScoreMap[empId].count += 1;
           });
         }
       }
@@ -441,96 +466,96 @@ export default function StaffEvaluationApp() {
 
     const staffRanking = Object.entries(staffScoreMap)
       .map(([empId, data]) => {
-        const avg = data.count > 0 ? data.totalScore / data.count : 0; //[cite: 4]
-        return { ...data, empId, avg }; //[cite: 4]
+        const avg = data.count > 0 ? data.totalScore / data.count : 0;
+        return { ...data, empId, avg };
       })
-      .sort((a, b) => b.avg - a.avg); //[cite: 4]
+      .sort((a, b) => b.avg - a.avg);
 
-    let topCriteria = null; //[cite: 4]
-    let lowestCriteria = null; //[cite: 4]
-    let maxCritAvg = -1; //[cite: 4]
-    let minCritAvg = 999; //[cite: 4]
+    let topCriteria = null;
+    let lowestCriteria = null;
+    let maxCritAvg = -1;
+    let minCritAvg = 999;
 
     Object.values(criteriaStats).forEach((crit) => {
       if (crit.ratedCount > 0) {
-        const avg = crit.totalScoreSum / crit.ratedCount; //[cite: 4]
+        const avg = crit.totalScoreSum / crit.ratedCount;
         if (avg > maxCritAvg) {
-          maxCritAvg = avg; //[cite: 4]
-          topCriteria = { ...crit, avg }; //[cite: 4]
+          maxCritAvg = avg;
+          topCriteria = { ...crit, avg };
         }
         if (avg < minCritAvg) {
-          minCritAvg = avg; //[cite: 4]
-          lowestCriteria = { ...crit, avg }; //[cite: 4]
+          minCritAvg = avg;
+          lowestCriteria = { ...crit, avg };
         }
       }
     });
 
-    const topStaff = staffRanking.length > 0 ? staffRanking[0] : null; //[cite: 4]
+    const topStaff = staffRanking.length > 0 ? staffRanking[0] : null;
 
-    return { totalEvals, counterReport, criteriaStats, topStaff, staffRanking, topCriteria, lowestCriteria }; //[cite: 4]
+    return { totalEvals, counterReport, criteriaStats, topStaff, staffRanking, topCriteria, lowestCriteria };
   };
 
-  const reportStats = calculateReportStats(); //[cite: 4]
+  const reportStats = calculateReportStats();
 
-  // คำนวณข้อมูลสำหรับ Pagination ของตารางประวัติ[cite: 4]
-  const totalPages = Math.ceil(filteredData.length / rowsPerPage) || 1; //[cite: 4]
-  const indexOfLastRow = currentPage * rowsPerPage; //[cite: 4]
-  const indexOfFirstRow = indexOfLastRow - rowsPerPage; //[cite: 4]
-  const currentTableData = filteredData.slice(indexOfFirstRow, indexOfLastRow); //[cite: 4]
+  // คำนวณข้อมูลสำหรับ Pagination ของตารางประวัติ
+  const totalPages = Math.ceil(filteredData.length / rowsPerPage) || 1;
+  const indexOfLastRow = currentPage * rowsPerPage;
+  const indexOfFirstRow = indexOfLastRow - rowsPerPage;
+  const currentTableData = filteredData.slice(indexOfFirstRow, indexOfLastRow);
 
   const handlePeriodChange = (e) => {
-    setReportPeriod(e.target.value); //[cite: 4]
-    setCurrentPage(1); //[cite: 4]
+    setReportPeriod(e.target.value);
+    setCurrentPage(1);
   };
 
   const handleStaffFilterChange = (e) => {
-    setSelectedStaffFilter(e.target.value); //[cite: 4]
-    setCurrentPage(1); //[cite: 4]
+    setSelectedStaffFilter(e.target.value);
+    setCurrentPage(1);
   };
 
   const exportToExcel = () => {
-    let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; //[cite: 4]
-    csvContent += "=== ประวัติการประเมินย้อนหลัง ===\n"; //[cite: 4]
-    csvContent += "วันที่-เวลา,ประเภทบริการ,รหัสพนักงาน,ชื่อพนักงาน,ข้อเสนอแนะ,คะแนนรวม\n"; //[cite: 4]
+    let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
+    csvContent += "=== ประวัติการประเมินย้อนหลัง ===\n";
+    csvContent += "วันที่-เวลา,ประเภทบริการ,รหัสพนักงาน,ชื่อพนักงาน,ข้อเสนอแนะ,คะแนนรวม\n";
 
     filteredData.forEach((item) => {
-      const dateStr = item.createdAt ? new Date(item.createdAt).toLocaleString('th-TH') : '-'; //[cite: 4]
-      const serviceTypeName = item.serviceType === 'other' ? 'อื่นๆ' : 'เคาน์เตอร์รับบริการ'; //[cite: 4]
-      const totalScore = item.scores ? Object.values(item.scores).reduce((a, b) => a + b, 0) : 0; //[cite: 4]
-      const cleanComment = (item.comment || '').replace(/"/g, '""'); //[cite: 4]
-      csvContent += `"${dateStr}","${serviceTypeName}","${item.employeeId}","${item.employeeName}","${cleanComment}",${totalScore}\n`; //[cite: 4]
+      const dateStr = item.createdAt ? new Date(item.createdAt).toLocaleString('th-TH') : '-';
+      const serviceTypeName = item.serviceType === 'other' ? 'อื่นๆ' : 'เคาน์เตอร์รับบริการ';
+      const totalScore = item.scores ? Object.values(item.scores).reduce((a, b) => a + b, 0) : 0;
+      const cleanComment = (item.comment || '').replace(/"/g, '""');
+      csvContent += `"${dateStr}","${serviceTypeName}","${item.employeeId}","${item.employeeName}","${cleanComment}",${totalScore}\n`;
     });
 
-    csvContent += "\n=== สรุปอันดับคะแนนพนักงาน (เรียงจากมากไปน้อย) ===\n"; //[cite: 4]
-    csvContent += "อันดับ,รหัสพนักงาน,ชื่อพนักงาน,จำนวนครั้งที่รับประเมิน,คะแนนเฉลี่ย (เต็ม 5.00)\n"; //[cite: 4]
+    csvContent += "\n=== สรุปอันดับคะแนนพนักงาน (เรียงจากมากไปน้อย) ===\n";
+    csvContent += "อันดับ,รหัสพนักงาน,ชื่อพนักงาน,จำนวนครั้งที่รับประเมิน,คะแนนเฉลี่ย (เต็ม 5.00)\n";
 
     reportStats.staffRanking.forEach((staff, idx) => {
-      csvContent += `${idx + 1},"${staff.empId}","${staff.name}",${staff.count},${staff.avg.toFixed(2)}\n`; //[cite: 4]
+      csvContent += `${idx + 1},"${staff.empId}","${staff.name}",${staff.count},${staff.avg.toFixed(2)}\n`;
     });
 
-    const encodedUri = encodeURI(csvContent); //[cite: 4]
-    const link = document.createElement("a"); //[cite: 4]
-    link.setAttribute("href", encodedUri); //[cite: 4]
-    link.setAttribute("download", `รายงานการประเมิน_${reportPeriod}_${new Date().toISOString().slice(0, 10)}.csv`); //[cite: 4]
-    document.body.appendChild(link); //[cite: 4]
-    link.click(); //[cite: 4]
-    document.body.removeChild(link); //[cite: 4]
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `รายงานการประเมิน_${reportPeriod}_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const exportToPDF = () => {
     const staffName =
       selectedStaffFilter === 'all'
-        ? 'ภาพรวมพนักงานทุกคนรวมกัน' //[cite: 4]
+        ? 'ภาพรวมพนักงานทุกคนรวมกัน'
         : staffList.find((s) => String(s.employeeId) === String(selectedStaffFilter))?.name ||
-          selectedStaffFilter; //[cite: 4]
+          selectedStaffFilter;
 
-    const printWindow = window.open('', '_blank', 'width=950,height=800'); //[cite: 4]
+    const printWindow = window.open('', '_blank', 'width=950,height=800');
 
-    let criteriaSummaryHTML = ''; //[cite: 4]
+    let criteriaSummaryHTML = '';
 
     if (reportStats.counterReport.ratedCount > 0) {
-      const ratedC = reportStats.counterReport.ratedCount; //[cite: 4]
-      const cAvg = (reportStats.counterReport.totalScoreSum / ratedC).toFixed(2); //[cite: 4]
+      const ratedC = reportStats.counterReport.ratedCount;
+      const cAvg = (reportStats.counterReport.totalScoreSum / ratedC).toFixed(2);
       criteriaSummaryHTML += `
         <div style="margin-bottom: 16px; background: #e0f2fe; border: 1px solid #7dd3fc; padding: 12px; border-radius: 10px;">
           <b style="font-size: 14px; color: #0369a1;">🏢 เคาน์เตอร์รับบริการ: ${reportStats.counterReport.title}</b>
@@ -539,12 +564,12 @@ export default function StaffEvaluationApp() {
             ประเมินทั้งหมด: ${ratedC} ครั้ง
           </div>
         </div>
-      `; //[cite: 4]
+      `;
     }
 
     Object.values(reportStats.criteriaStats).forEach((stat, idx) => {
-      const rated = stat.ratedCount || 1; //[cite: 4]
-      const avg = (stat.totalScoreSum / rated).toFixed(2); //[cite: 4]
+      const rated = stat.ratedCount || 1;
+      const avg = (stat.totalScoreSum / rated).toFixed(2);
 
       criteriaSummaryHTML += `
         <div style="margin-bottom: 12px; background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px; border-radius: 10px;">
@@ -553,10 +578,10 @@ export default function StaffEvaluationApp() {
             <span style="background: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 6px; font-weight: bold; font-size: 12px;">คะแนนเฉลี่ย: ${avg} / 5.00</span>
           </div>
         </div>
-      `; //[cite: 4]
+      `;
     });
 
-    let staffRankingHTML = ''; //[cite: 4]
+    let staffRankingHTML = '';
     reportStats.staffRanking.forEach((staff, idx) => {
       staffRankingHTML += `
         <tr>
@@ -565,7 +590,7 @@ export default function StaffEvaluationApp() {
           <td style="padding: 6px; border-bottom: 1px solid #e2e8f0; text-align: center;">${staff.count} ครั้ง</td>
           <td style="padding: 6px; border-bottom: 1px solid #e2e8f0; text-align: center; font-weight: bold; color: #0284c7;">${staff.avg.toFixed(2)} / 5.00</td>
         </tr>
-      `; //[cite: 4]
+      `;
     });
 
     printWindow.document.write(`
@@ -609,20 +634,20 @@ export default function StaffEvaluationApp() {
           </script>
         </body>
       </html>
-    `); //[cite: 4]
-    printWindow.document.close(); //[cite: 4]
+    `);
+    printWindow.document.close();
   };
 
-  // 🌟 ไอคอนประเมิน 5 ระดับ (เรียงลำดับขนาดจากเล็กไปใหญ่)[cite: 4]
+  // 🌟 ไอคอนประเมิน 5 ระดับ (เรียงลำดับขนาดจากเล็กไปใหญ่)
   const emotionLevels5 = [
-    { score: 1, emoji: '😡', label: 'พอใจน้อยมาก', sizeClass: 'text-xl sm:text-2xl md:text-3xl' }, //[cite: 4]
-    { score: 2, emoji: '🙁', label: 'พอใจน้อย', sizeClass: 'text-2xl sm:text-3xl md:text-4xl' }, //[cite: 4]
-    { score: 3, emoji: '😐', label: 'พอใจปานกลาง', sizeClass: 'text-3xl sm:text-4xl md:text-5xl' }, //[cite: 4]
-    { score: 4, emoji: '😊', label: 'พอใจมาก', sizeClass: 'text-4xl sm:text-5xl md:text-6xl' }, //[cite: 4]
-    { score: 5, emoji: '😍', label: 'พอใจมากที่สุด', sizeClass: 'text-5xl sm:text-6xl md:text-7xl' } //[cite: 4]
+    { score: 1, emoji: '😡', label: 'พอใจน้อยมาก', sizeClass: 'text-xl sm:text-2xl md:text-3xl' },
+    { score: 2, emoji: '🙁', label: 'พอใจน้อย', sizeClass: 'text-2xl sm:text-3xl md:text-4xl' },
+    { score: 3, emoji: '😐', label: 'พอใจปานกลาง', sizeClass: 'text-3xl sm:text-4xl md:text-5xl' },
+    { score: 4, emoji: '😊', label: 'พอใจมาก', sizeClass: 'text-4xl sm:text-5xl md:text-6xl' },
+    { score: 5, emoji: '😍', label: 'พอใจมากที่สุด', sizeClass: 'text-5xl sm:text-6xl md:text-7xl' }
   ];
 
-  const visibleCriteriaList = criteriaList.filter((crit) => crit.active !== false); //[cite: 4]
+  const visibleCriteriaList = criteriaList.filter((crit) => crit.active !== false);
 
   return (
     <div
@@ -636,18 +661,18 @@ export default function StaffEvaluationApp() {
             <img
               src={pwaLogo}
               alt="โลโก้ กปภ."
-              className="w-20 h-20 sm:w-24 sm:h-24 mx-auto object-contain drop-shadow-md" //[cite: 4]
+              className="w-20 h-20 sm:w-24 sm:h-24 mx-auto object-contain drop-shadow-md"
             />
           </div>
 
           <h2 className="text-xl sm:text-2xl font-bold text-sky-900 mb-1 leading-snug">
-            <p className="text-sm sm:text-base text-sky-600/80 mb-6">
-            กรุณาเลือกพนักงาน{' '}
+            ระบบประเมินความพึงพอใจการให้บริการ กปภ.สาขานครพนม
+          </h2>
+          <p className="text-sm sm:text-base text-sky-600/80 mb-6">
+            กรุณาเลือกรูปพนักงาน{' '}
             <span className="font-bold text-emerald-700">ประจำเคาน์เตอร์</span>{' '}
             ที่ท่านเข้ารับบริการเพื่อประเมินความพึงพอใจ
           </p>
-          </h2>
-          
 
           {counterStaffList.length === 0 ? (
             <div className="bg-sky-50 border border-sky-100 rounded-2xl p-8 text-sky-700 text-sm">
@@ -799,7 +824,7 @@ export default function StaffEvaluationApp() {
             </div>
           </div>
 
-          {/* TAB 1: รายงานการประเมิน (ยึดตามโค้ด app_4.txt ทั้งหมด)[cite: 4] */}
+          {/* TAB 1: รายงานการประเมิน */}
           {activeAdminTab === 'reports' && (
             <div className="space-y-6">
               <div className="bg-sky-50/60 p-4 rounded-2xl border border-sky-100 grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -853,7 +878,7 @@ export default function StaffEvaluationApp() {
                 </div>
               </div>
 
-              {/* 📌 สรุปจำนวนผู้ประเมินตามช่วงเวลา[cite: 4] */}
+              {/* 📌 สรุปจำนวนผู้ประเมินตามช่วงเวลา */}
               <div className="bg-sky-600 text-white p-4 rounded-2xl shadow-md flex items-center justify-between">
                 <div>
                   <p className="text-xs text-sky-100 font-medium">
@@ -911,7 +936,7 @@ export default function StaffEvaluationApp() {
                 </div>
               </div>
 
-              {/* 🏢 สรุปรายงานเฉพาะ "เคาน์เตอร์รับบริการ"[cite: 4] */}
+              {/* 🏢 สรุปรายงานเฉพาะ "เคาน์เตอร์รับบริการ" */}
               <div className="bg-white p-4 sm:p-6 rounded-2xl border border-sky-300 shadow-sm space-y-4">
                 <h3 className="text-xs sm:text-sm font-bold text-sky-900 border-b border-sky-100 pb-2 flex items-center justify-between">
                   <span>🏢 รายงานผลการประเมิน: เคาน์เตอร์รับบริการ</span>
@@ -1114,7 +1139,7 @@ export default function StaffEvaluationApp() {
                 )}
               </div>
 
-              {/* สรุปกราฟสถิติหัวข้ออื่นๆ[cite: 4] */}
+              {/* สรุปกราฟสถิติหัวข้ออื่นๆ */}
               <div className="bg-white p-4 sm:p-6 rounded-2xl border border-sky-200 shadow-sm space-y-4">
                 <h3 className="text-xs sm:text-sm font-bold text-sky-900 border-b border-sky-100 pb-2">
                   📊 สรุปผลการประเมินแยกตามหัวข้ออื่นๆ (คะแนนและเปอร์เซ็นต์)
@@ -1274,7 +1299,7 @@ export default function StaffEvaluationApp() {
                 )}
               </div>
 
-              {/* ประวัติการประเมินย้อนหลัง (10 แถว + Pagination)[cite: 4] */}
+              {/* ประวัติการประเมินย้อนหลัง (10 แถว + Pagination) */}
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
                   <h3 className="text-xs sm:text-sm font-bold text-sky-900">
@@ -1590,7 +1615,7 @@ export default function StaffEvaluationApp() {
             </div>
           )}
 
-          {/* TAB 3: จัดการหัวข้อประเมิน[cite: 4] */}
+          {/* TAB 3: จัดการหัวข้อประเมิน */}
           {activeAdminTab === 'criteria' && (
             <div className="space-y-6">
               <form onSubmit={handleSaveCriteria} className="space-y-2">
@@ -1689,31 +1714,39 @@ export default function StaffEvaluationApp() {
         </div>
       )}
 
-      {/* ⭐ 4. หน้าจอประเมินความพึงพอใจสำหรับลูกค้า[cite: 4] */}
+      {/* ⭐ 4. หน้าจอประเมินความพึงพอใจสำหรับลูกค้า */}
       {step === 'evaluating' && currentStaff && (
-        <div className="bg-white w-screen h-screen flex flex-col justify-between p-3 sm:p-5 md:p-6 overflow-hidden relative">
+        <div className="bg-white w-full max-w-4xl min-h-[85vh] rounded-3xl shadow-xl border border-sky-100 flex flex-col justify-between p-4 sm:p-6 md:p-8 relative">
           <button
             type="button"
             onClick={() => {
-              if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
+              try {
+                if (document.fullscreenElement && document.exitFullscreen) {
+                  document.exitFullscreen().catch(() => {});
+                }
+              } catch {}
               setStep('login');
               setInputEmpId('');
               setCurrentStaff(null);
               setScores({});
               setCounterOverallScore(null);
               setComment('');
+              setIsSubmitting(false);
             }}
-            className="absolute top-3 right-3 text-xs text-sky-600 hover:text-red-500 border border-sky-200 bg-sky-50 px-3 py-1.5 rounded-xl transition font-semibold z-20"
+            className="absolute top-4 right-4 text-xs text-sky-600 hover:text-red-500 border border-sky-200 bg-sky-50 px-3 py-1.5 rounded-xl transition font-semibold z-20"
           >
-            ออกจากระบบ
+            ย้อนกลับ / ออกจากระบบ
           </button>
 
-          <div className="flex flex-col items-center justify-center border-b border-sky-100 pb-2 mb-2 flex-shrink-0 text-center">
+          <div className="flex flex-col items-center justify-center border-b border-sky-100 pb-3 mb-3 flex-shrink-0 text-center">
             <div className="mb-2">
               <img
-                src={currentStaff.photoUrl}
+                src={
+                  currentStaff.photoUrl ||
+                  "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500&h=500&fit=crop&crop=faces"
+                }
                 alt={currentStaff.name}
-                className="w-32 h-32 sm:w-40 sm:h-40 md:w-48 md:h-48 rounded-full object-cover shadow-xl border-4 border-sky-300 p-1 bg-white mx-auto"
+                className="w-28 h-28 sm:w-36 sm:h-36 rounded-full object-cover shadow-xl border-4 border-sky-300 p-1 bg-white mx-auto"
               />
             </div>
             <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-sky-900 leading-tight">
@@ -1730,16 +1763,16 @@ export default function StaffEvaluationApp() {
 
           <form
             onSubmit={handleSubmitScore}
-            className="flex flex-col justify-between flex-1 space-y-2 overflow-hidden"
+            className="flex flex-col justify-between flex-1 space-y-4"
           >
-            <div className="space-y-3 overflow-y-auto pr-1 flex-1 flex flex-col justify-around">
+            <div className="space-y-4 flex-1 flex flex-col justify-around">
               <div className="text-center py-1">
                 <h3 className="text-base sm:text-lg md:text-xl font-bold text-sky-800 bg-sky-100/70 py-2 px-4 rounded-2xl shadow-2xs inline-block">
                   💧 โปรดประเมินความพึงพอใจในการรับบริการครั้งนี้ 💧
                 </h3>
               </div>
 
-              {/* 🏢 กรณีเลือก "เคาน์เตอร์รับบริการ": ซ่อนหัวข้อประเมิน ให้กดเลือก 5 ระดับภาพรวม[cite: 4] */}
+              {/* 🏢 กรณีเลือก "เคาน์เตอร์รับบริการ": ซ่อนหัวข้อประเมิน ให้กดเลือก 5 ระดับภาพรวม */}
               {serviceType === 'counter' ? (
                 <div className="bg-sky-50/80 border border-sky-200 p-4 sm:p-6 rounded-3xl shadow-sm space-y-3">
                   <p className="text-sm sm:text-base md:text-lg font-bold text-sky-900 text-center">
@@ -1776,7 +1809,7 @@ export default function StaffEvaluationApp() {
                   </div>
                 </div>
               ) : (
-                /* 📌 กรณีเลือก "อื่นๆ": แสดงหัวข้อประเมินปกติ พร้อมไอคอน 5 ระดับ[cite: 4] */
+                /* 📌 กรณีเลือก "อื่นๆ": แสดงหัวข้อประเมินปกติ พร้อมไอคอน 5 ระดับ */
                 visibleCriteriaList.length === 0 ? (
                   <p className="text-center text-slate-400 py-6 text-sm">
                     ไม่มีหัวข้อการประเมินในขณะนี้
@@ -1830,22 +1863,28 @@ export default function StaffEvaluationApp() {
                   placeholder="ข้อเสนอแนะเพิ่มเติม (ถ้ามี)..."
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-sky-200 bg-sky-50/30 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-xs sm:text-sm text-sky-900 placeholder-sky-300"
+                  className="w-full px-3 py-2.5 rounded-xl border border-sky-200 bg-sky-50/30 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-xs sm:text-sm text-sky-900 placeholder-sky-300"
                 />
               </div>
             </div>
 
             <button
-              type="submit"
-              className="w-full bg-sky-600 text-white py-3 sm:py-4 rounded-2xl font-bold hover:bg-sky-700 transition shadow-lg shadow-sky-200 text-base sm:text-lg flex-shrink-0"
+              type="button"
+              onClick={handleSubmitScore}
+              disabled={isSubmitting}
+              className={`w-full text-white py-3.5 sm:py-4 rounded-2xl font-bold transition shadow-lg shadow-sky-200 text-base sm:text-lg ${
+                isSubmitting
+                  ? 'bg-sky-400 cursor-wait'
+                  : 'bg-sky-600 hover:bg-sky-700 cursor-pointer'
+              }`}
             >
-              ยืนยันการประเมิน
+              {isSubmitting ? 'กำลังบันทึกผลการประเมิน...' : 'ยืนยันการประเมิน'}
             </button>
           </form>
         </div>
       )}
 
-      {/* 🎉 5. หน้าจอขอบคุณ[cite: 4] */}
+      {/* 🎉 5. หน้าจอขอบคุณ */}
       {step === 'success' && (
         <div className="bg-white p-8 sm:p-12 rounded-3xl shadow-xl border border-sky-100 max-w-md w-full text-center space-y-4">
           <div className="text-6xl sm:text-7xl animate-bounce">💧</div>
