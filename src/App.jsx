@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { db } from './firebaseConfig';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
-import pwaLogo from './assets/pwa.WEBP';
+import pwaLogo from './assets/pwa.webp';
 
 // กำหนดค่าคงที่ของสถานะพนักงานทั้ง 4 แบบ เพื่อใช้อ้างอิงทั่วทั้งระบบและรองรับการกรอง/แสดงผลในอนาคต
 const STAFF_STATUS_OPTIONS = [
