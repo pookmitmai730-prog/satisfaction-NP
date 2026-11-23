@@ -1714,7 +1714,7 @@ export default function StaffEvaluationApp() {
         </div>
       )}
 
-      {/* ⭐ 4. หน้าจอประเมินความพึงพอใจสำหรับลูกค้า (ปรับชื่อ-ตำแหน่งอยู่บนรูป + ขยายรูปใหญ่ประมาณครึ่งจอ + ข้อความ "ระดับความพึงพอใจ") */}
+      {/* ⭐ 4. หน้าจอประเมินความพึงพอใจสำหรับลูกค้า */}
       {step === 'evaluating' && currentStaff && (
         <div className="bg-gradient-to-b from-sky-50/80 via-white to-sky-50/50 w-full max-w-5xl min-h-[92vh] rounded-3xl shadow-2xl border border-sky-100 flex flex-col justify-between p-4 sm:p-6 md:p-8 relative">
           <button
@@ -1738,18 +1738,12 @@ export default function StaffEvaluationApp() {
             ย้อนกลับ
           </button>
 
-          {/* ส่วนข้อมูลผู้รับการประเมิน: ชื่อและตำแหน่งอยู่ด้านบน + รูปภาพใหญ่ประมาณครึ่งจอ */}
+          {/* ส่วนผู้รับการประเมิน: ป้ายจุดบริการตัวใหญ่ + รูปภาพขนาดใหญ่ประมาณครึ่งจอ + ชื่อ-ตำแหน่งอยู่ใต้รูป */}
           <div className="flex flex-col items-center justify-center border-b border-sky-100 pb-4 mb-4 flex-shrink-0 text-center">
-            <div className="mb-3 space-y-1">
-              <span className="inline-block text-xs bg-sky-100 text-sky-800 font-bold px-3.5 py-1 rounded-full shadow-2xs">
+            <div className="mb-3">
+              <span className="inline-block text-lg sm:text-xl md:text-2xl bg-sky-100 text-sky-900 font-extrabold px-5 py-1.5 rounded-2xl border border-sky-200 shadow-xs">
                 {serviceType === 'counter' ? '🏢 เคาน์เตอร์รับบริการ' : '📌 จุดบริการอื่นๆ'}
               </span>
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-sky-950 tracking-tight leading-tight">
-                {currentStaff.name}
-              </h2>
-              <p className="text-sm sm:text-base md:text-lg text-sky-700 font-semibold">
-                {currentStaff.position || 'เจ้าหน้าที่บริการ'}
-              </p>
             </div>
 
             <div className="w-full flex justify-center">
@@ -1764,6 +1758,15 @@ export default function StaffEvaluationApp() {
                 />
               </div>
             </div>
+
+            <div className="mt-3 space-y-1">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-sky-950 tracking-tight leading-tight">
+                {currentStaff.name}
+              </h2>
+              <p className="text-sm sm:text-base md:text-lg text-sky-700 font-semibold">
+                {currentStaff.position || 'เจ้าหน้าที่บริการ'}
+              </p>
+            </div>
           </div>
 
           <form
@@ -1771,12 +1774,6 @@ export default function StaffEvaluationApp() {
             className="flex flex-col justify-between flex-1 space-y-4"
           >
             <div className="space-y-4 flex-1 flex flex-col justify-around">
-              <div className="text-center">
-                <span className="text-base sm:text-lg md:text-xl font-bold text-sky-900 bg-sky-100/90 border border-sky-200/80 py-2 px-5 rounded-2xl shadow-2xs inline-block">
-                  💧 ระดับความพึงพอใจ 💧
-                </span>
-              </div>
-
               {/* 🏢 กรณีเลือก "เคาน์เตอร์รับบริการ": กดเลือก 5 ระดับภาพรวม */}
               {serviceType === 'counter' ? (
                 <div className="bg-white/90 border border-sky-200/90 p-4 sm:p-5 rounded-3xl shadow-sm space-y-3">
